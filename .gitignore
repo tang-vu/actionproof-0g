@@ -21,6 +21,12 @@ tmp/
 .tools/
 packages/contracts/lib/
 
+# Codex local state and scratch files
+.codex/
+.codex-*/
+AGENTS.local.md
+CODEX.local.md
+
 # environment and secrets
 .env
 .env.*
