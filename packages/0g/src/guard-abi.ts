@@ -115,6 +115,13 @@ export const actionProofGuardAbi = [
   },
   {
     type: "function",
+    name: "authorizedVerifier",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "address" }],
+  },
+  {
+    type: "function",
     name: "nextNonce",
     stateMutability: "view",
     inputs: [

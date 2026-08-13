@@ -88,6 +88,15 @@ recomputes the SDK Merkle root because the current high-level proof option is no
 own. Storage availability is not guaranteed forever by this application; the trace must distinguish
 integrity from availability.
 
+### ERC-8004 identity evidence
+
+Identity is optional and read-only. When configured, the API reads the official registry on the
+destination chain and requires `getAgentWallet(agentId)` to equal the exact action-agent address.
+The registry owner, metadata URI, wallet, registry address, chain, and lookup time enter the signed
+canonical report. A stale/malicious metadata URI cannot change the wallet comparison or clear any
+policy finding. Registry compromise, wallet rotation between assessment and execution, and metadata
+availability remain trust and freshness risks; short action deadlines limit but do not remove them.
+
 ### Verifier and relayer
 
 Verifier and relayer keys are server-only and should be separate in production. The verifier signs
@@ -138,6 +147,7 @@ It has no general withdrawal function; failed target calls revert the whole tran
 | Target reenters executor                                      | Non-reentrancy guard rejects nested execution                           |
 | Downstream target reverts                                     | Execution transaction reverts; anchor remains, execution bit rolls back |
 | Mainnet config accidentally selected                          | Startup/write gates require explicit mainnet broadcast opt-in           |
+| ERC-8004 wallet differs or lookup fails while enforced        | Deterministic identity finding forces block                             |
 
 ## Out of scope / known limitations
 
@@ -147,7 +157,7 @@ It has no general withdrawal function; failed target calls revert the whole tran
 - private reports or access-controlled storage;
 - threshold/multisignature verification, verifier staking, or decentralized policy governance;
 - key recovery, KMS/HSM integration, production database/queue/high availability;
-- production ERC-7857 Agentic ID oracle/TEE integration;
+- ERC-8004 registration/reputation writes and production ERC-7857 oracle/TEE integration;
 - formal verification or a third-party audit.
 
 ## Operational requirements

@@ -3,13 +3,13 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import type { ActionRequest } from "@actionproof/core";
+import type { ActionRequest, AgentIdentityEvidence } from "@actionproof/core";
 import type { FastifyInstance } from "fastify";
 import { encodeFunctionData, getAddress, maxUint256 } from "viem";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { buildApp } from "../src/app.js";
-import { parseEnv } from "../src/config.js";
+import { parseEnv, type AppConfig } from "../src/config.js";
 import { createSandboxRuntime, type Runtime } from "../src/runtime.js";
 import { JsonFileStateStore, MemoryStateStore } from "../src/store.js";
 import type { ActionTrace, AnalysisJob } from "../src/types.js";
@@ -63,8 +63,10 @@ function config() {
   });
 }
 
-async function createApp(runtime?: Runtime): Promise<FastifyInstance> {
-  const parsed = config();
+async function createApp(
+  runtime?: Runtime,
+  parsed: AppConfig = config(),
+): Promise<FastifyInstance> {
   const app = await buildApp({
     config: parsed,
     runtime: runtime ?? createSandboxRuntime(parsed),
@@ -163,6 +165,14 @@ describe("ActionProof API sandbox pipeline", () => {
     expect(reportResponse.statusCode).toBe(200);
     expect((reportResponse.json() as { integrity: { valid: boolean } }).integrity.valid).toBe(true);
 
+    const originalVerification = await app.inject({
+      method: "POST",
+      url: `/v1/traces/${safeTrace.id}/verify`,
+      payload: {},
+    });
+    expect(originalVerification.statusCode).toBe(200);
+    expect((originalVerification.json() as ActionTrace["verification"]).valid).toBe(true);
+
     const blockedNonce = await nextNonce(app);
     expect(blockedNonce).toBe("1");
     const blockedJob = await terminalJob(
@@ -242,11 +252,81 @@ describe("ActionProof API sandbox pipeline", () => {
     expect(health.json()).toMatchObject({ ok: true, mode: "sandbox" });
     expect((health.json() as { label: string }).label).toContain("SANDBOX ONLY");
     const integrations = await app.inject({ method: "GET", url: "/v1/integrations" });
-    const statuses = integrations.json() as { services: Array<{ status: string; detail: string }> };
-    expect(statuses.services.every((service) => service.status === "sandbox")).toBe(true);
-    expect(statuses.services.every((service) => service.detail.includes("SANDBOX ONLY"))).toBe(
-      true,
+    const statuses = integrations.json() as {
+      writesEnabled: boolean;
+      services: Array<{ id: string; status: string; detail: string }>;
+    };
+    expect(statuses.writesEnabled).toBe(false);
+    expect(
+      statuses.services
+        .filter((service) => service.id !== "identity")
+        .every(
+          (service) => service.status === "sandbox" && service.detail.includes("SANDBOX ONLY"),
+        ),
+    ).toBe(true);
+    expect(statuses.services.find((service) => service.id === "identity")?.status).toBe(
+      "unavailable",
     );
+    const ready = await app.inject({ method: "GET", url: "/ready" });
+    expect(ready.statusCode).toBe(200);
+    expect(ready.json()).toMatchObject({ ready: true, mode: "sandbox" });
+  });
+
+  it("binds a configured ERC-8004 identity and blocks wallet mismatches", async () => {
+    const identityConfig = parseEnv({
+      ACTIONPROOF_MODE: "sandbox",
+      NODE_ENV: "test",
+      OG_NETWORK: "galileo",
+      OG_CHAIN_ID: "16602",
+      OG_AGENTIC_ID: "7",
+    });
+    const identity = (matchesActionAgent: boolean): AgentIdentityEvidence => ({
+      standard: "ERC-8004",
+      chainId: 16602,
+      registry: getAddress("0x8004A818BFB912233c491871b3d84c89A494BD9e"),
+      agentId: "7",
+      owner: REQUESTER,
+      agentWallet: matchesActionAgent ? AGENT : SPENDER,
+      tokenUri: "ipfs://actionproof-agent-7",
+      matchesActionAgent,
+      checkedAt: new Date().toISOString(),
+      explorerUrl:
+        "https://chainscan-galileo.0g.ai/address/0x8004A818BFB912233c491871b3d84c89A494BD9e",
+    });
+
+    const matchingBase = createSandboxRuntime(identityConfig);
+    const matchingRuntime: Runtime = {
+      ...matchingBase,
+      resolveAgentIdentity: async () => identity(true),
+    };
+    const matchingApp = await createApp(matchingRuntime, identityConfig);
+    const matchingJob = await terminalJob(
+      matchingApp,
+      (await submit(matchingApp, action({ nonce: "0" }))).id,
+    );
+    const matchingTrace = await getTrace(matchingApp, matchingJob);
+    expect(matchingTrace.report.verdict).toBe("allow");
+    expect(matchingTrace.report.agentIdentity).toMatchObject({
+      agentId: "7",
+      matchesActionAgent: true,
+    });
+
+    const mismatchBase = createSandboxRuntime(identityConfig);
+    const mismatchRuntime: Runtime = {
+      ...mismatchBase,
+      resolveAgentIdentity: async () => identity(false),
+    };
+    const mismatchApp = await createApp(mismatchRuntime, identityConfig);
+    const mismatchJob = await terminalJob(
+      mismatchApp,
+      (await submit(mismatchApp, action({ nonce: "0" }))).id,
+    );
+    const mismatchTrace = await getTrace(mismatchApp, mismatchJob);
+    expect(mismatchTrace.report.verdict).toBe("block");
+    expect(mismatchTrace.report.finalPolicy.blockingRuleIds).toContain(
+      "AGENTIC_ID_WALLET_MISMATCH",
+    );
+    expect(mismatchTrace.execution.status).toBe("blocked");
   });
 
   it("requires the explicit mainnet broadcast gate", () => {

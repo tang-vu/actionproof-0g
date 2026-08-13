@@ -11,6 +11,7 @@ import {
   modelRiskAssessmentSchema,
   riskReportSchema,
   type ActionRequest,
+  type AgentIdentityEvidence,
   type CanonicalValue,
   type Finding,
   type ModelRiskAssessment,
@@ -215,6 +216,46 @@ export class Orchestrator {
         ...(this.#config.allowedTargets ? { allowedTargets: this.#config.allowedTargets } : {}),
         duplicate: false,
       });
+      let agentIdentity: AgentIdentityEvidence | undefined;
+      if (this.#config.OG_AGENTIC_ID !== undefined) {
+        try {
+          agentIdentity = await this.#runtime.resolveAgentIdentity(job.action.agent);
+          if (!agentIdentity) throw new Error("Agentic ID resolver returned no evidence");
+          if (!agentIdentity.matchesActionAgent) {
+            deterministic = [
+              ...deterministic,
+              findingSchema.parse({
+                id: "AGENTIC_ID_WALLET_MISMATCH",
+                severity: "critical",
+                category: "deterministic",
+                title: "Agentic ID wallet mismatch",
+                description:
+                  "The ERC-8004 agent wallet does not match the exact agent address in this action.",
+                evidence: [
+                  `agentId=${agentIdentity.agentId}`,
+                  `registered=${agentIdentity.agentWallet}`,
+                  `action=${job.action.agent}`,
+                ],
+                blocking: true,
+              }),
+            ];
+          }
+        } catch (error) {
+          deterministic = [
+            ...deterministic,
+            findingSchema.parse({
+              id: "AGENTIC_ID_UNAVAILABLE",
+              severity: "critical",
+              category: "deterministic",
+              title: "Configured Agentic ID could not be verified",
+              description:
+                "Optional identity enforcement was configured, so resolution failure blocks execution.",
+              evidence: [safeErrorMessage(error).slice(0, 500)],
+              blocking: true,
+            }),
+          ];
+        }
+      }
       await this.#complete(
         job,
         activeStage,
@@ -234,6 +275,7 @@ export class Orchestrator {
             simulation,
             deterministicFindings: deterministic,
             policyVersion: "actionproof-policy/1",
+            ...(agentIdentity ? { agentIdentity } : {}),
           }),
         ) as Parameters<Runtime["compute"]["assess"]>[0];
         const result = await this.#runtime.compute.assess(computeInput);
@@ -261,6 +303,7 @@ export class Orchestrator {
         simulation,
         modelAssessment: assessment,
         compute,
+        ...(agentIdentity ? { agentIdentity } : {}),
         finalPolicy: {
           version: "actionproof-policy/1",
           blockingRuleIds: finalDecision.blockingRuleIds,

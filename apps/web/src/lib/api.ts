@@ -44,6 +44,12 @@ export const api = {
   getNonce(requester: string): Promise<{ requester: string; nonce: string }> {
     return request(`/v1/nonces/${encodeURIComponent(requester)}`);
   },
+  verifyTrace(id: string): Promise<ActionTrace["verification"]> {
+    return request(`/v1/traces/${encodeURIComponent(id)}/verify`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
+  },
   verifyTamper(
     id: string,
     mutation: "calldata" | "reportRoot" | "nonce",

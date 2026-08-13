@@ -38,15 +38,50 @@ export function TraceView({ id }: { id: string }) {
   const [error, setError] = useState<string | null>(null);
   const [tamper, setTamper] = useState<ActionTrace["verification"] | null>(null);
   const [tampering, setTampering] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [verificationError, setVerificationError] = useState<string | null>(null);
 
   useEffect(() => {
-    void api
-      .getTrace(id)
-      .then(setTrace)
-      .catch((reason: unknown) =>
-        setError(reason instanceof Error ? reason.message : "Trace not found"),
-      );
+    let active = true;
+    void api.getTrace(id).then(
+      async (loaded) => {
+        if (!active) return;
+        setTrace(loaded);
+        setVerifying(true);
+        try {
+          const verification = await api.verifyTrace(id);
+          if (active) setTrace((current) => (current ? { ...current, verification } : current));
+        } catch (reason) {
+          if (active) {
+            setVerificationError(
+              reason instanceof Error ? reason.message : "Live verification failed",
+            );
+          }
+        } finally {
+          if (active) setVerifying(false);
+        }
+      },
+      (reason: unknown) => {
+        if (active) setError(reason instanceof Error ? reason.message : "Trace not found");
+      },
+    );
+    return () => {
+      active = false;
+    };
   }, [id]);
+
+  async function verifyEvidence() {
+    setVerifying(true);
+    setVerificationError(null);
+    try {
+      const verification = await api.verifyTrace(id);
+      setTrace((current) => (current ? { ...current, verification } : current));
+    } catch (reason) {
+      setVerificationError(reason instanceof Error ? reason.message : "Live verification failed");
+    } finally {
+      setVerifying(false);
+    }
+  }
 
   async function runTamper() {
     setTampering(true);
@@ -116,7 +151,16 @@ export function TraceView({ id }: { id: string }) {
         <span className={`mode-pill ${trace.mode === "live" ? "live" : "sandbox"}`}>
           {trace.mode === "live" ? "0G live" : "Sandbox"}
         </span>
+        <button
+          className="verify-evidence"
+          type="button"
+          disabled={verifying}
+          onClick={verifyEvidence}
+        >
+          {verifying ? "Verifying…" : "Verify evidence now"}
+        </button>
       </div>
+      {verificationError && <p className="verification-error">{verificationError}</p>}
 
       <div className="trace-grid">
         <section className="panel evidence-panel">
@@ -133,6 +177,13 @@ export function TraceView({ id }: { id: string }) {
             value={trace.storage.rootHash}
             href={trace.storage.explorerUrl}
           />
+          {trace.storage.sequence && (
+            <HashRow
+              label="Storage submission sequence"
+              value={trace.storage.sequence}
+              href={trace.storage.explorerUrl}
+            />
+          )}
           <HashRow label="EIP-712 signature" value={trace.signature} />
           <HashRow
             label="Anchor transaction"
@@ -145,6 +196,19 @@ export function TraceView({ id }: { id: string }) {
               value={trace.execution.transactionHash}
               href={trace.execution.explorerUrl}
             />
+          )}
+          {trace.report.agentIdentity && (
+            <>
+              <HashRow
+                label="ERC-8004 registry"
+                value={trace.report.agentIdentity.registry}
+                href={trace.report.agentIdentity.explorerUrl}
+              />
+              <HashRow
+                label={`Agent ${trace.report.agentIdentity.agentId} wallet`}
+                value={trace.report.agentIdentity.agentWallet}
+              />
+            </>
           )}
         </section>
 

@@ -114,6 +114,21 @@ export const computeMetadataSchema = z.object({
   generatedAt: z.string().datetime(),
 });
 
+export const agentIdentityEvidenceSchema = z.object({
+  standard: z.literal("ERC-8004"),
+  chainId: z.number().int().positive(),
+  registry: addressSchema,
+  agentId: uintStringSchema,
+  owner: addressSchema,
+  agentWallet: addressSchema,
+  tokenUri: z.string().min(1).max(2_048),
+  matchesActionAgent: z.boolean(),
+  checkedAt: z.string().datetime(),
+  explorerUrl: z.string().url(),
+});
+
+export type AgentIdentityEvidence = z.infer<typeof agentIdentityEvidenceSchema>;
+
 export const riskReportSchema = z.object({
   schemaVersion: z.literal("1.0"),
   actionHash: bytes32Schema,
@@ -125,6 +140,7 @@ export const riskReportSchema = z.object({
   simulation: simulationResultSchema,
   modelAssessment: modelRiskAssessmentSchema,
   compute: computeMetadataSchema,
+  agentIdentity: agentIdentityEvidenceSchema.optional(),
   finalPolicy: z.object({
     version: z.literal("actionproof-policy/1"),
     blockingRuleIds: z.array(z.string()),
@@ -157,6 +173,7 @@ export const storageReceiptSchema = z.object({
   mode: z.enum(["0g", "sandbox"]),
   rootHash: bytes32Schema,
   transactionHash: bytes32Schema.optional(),
+  sequence: uintStringSchema.optional(),
   indexerUrl: z.string().url().optional(),
   explorerUrl: z.string().url().optional(),
   uploadedAt: z.string().datetime(),

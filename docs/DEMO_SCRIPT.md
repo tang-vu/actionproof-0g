@@ -53,6 +53,7 @@ status. Say explicitly whether the demo is sandbox or live Galileo.
 5. Let the actual pipeline states complete: policy, simulation, Compute, Storage, Chain anchor, then
    guarded execution.
 6. Open the public trace.
+7. Point out the fresh **Verify evidence now** server check before demonstrating tampering.
 
 > The exact action hash is independent of the report. The canonical report has its own hash, 0G
 > Storage supplies the Merkle root, and EIP-712 binds both to this chain, this guard, this nonce, and

@@ -160,6 +160,17 @@ configuration is absent. It never silently instantiates sandbox services. `ENABL
 is required for paid Storage and Chain writes. Mainnet additionally requires
 `ALLOW_MAINNET_BROADCAST=true`.
 
+Live `/ready` and `/v1/integrations` run cached, bounded, read-only probes rather than inferring
+availability from environment variables. They verify RPC chain/block access, the public Compute
+model catalog and configured model, Storage indexer node selection, deployed guard bytecode, and the
+guard's authorized verifier. `pnpm probe:0g` checks the three public network surfaces on Galileo and
+Mainnet without keys or spend.
+
+When `OG_AGENTIC_ID` is set, the API also resolves the official ERC-8004 Identity Registry and binds
+the owner, registered agent wallet, token URI, registry, and chain into the canonical report. Exact
+wallet mismatch or resolution failure is a deterministic block. The optional identity probe affects
+readiness only when identity enforcement is configured.
+
 `ACTIONPROOF_MODE=sandbox` is for tests and local product inspection. It uses an in-memory chain,
 the real 0G SDK Merkle implementation, an ephemeral EIP-712 signer, and a deterministic advisory
 assessment. Every response, receipt, UI badge, and trace says `sandbox`; synthetic transaction hashes
@@ -181,8 +192,9 @@ A trace verifies:
 - onchain digest, anchor fields, and execution state in live mode;
 - timestamps, chain, and explorer receipts.
 
-The trace page's tamper action changes one bound field locally and calls the same verifier. A valid
-result after mutation is treated as a critical product failure, not a successful demo.
+The trace page actively calls the server verifier again when opened and offers a manual refresh. Its
+tamper action changes one bound field locally and calls the same verifier. A valid result after
+mutation is treated as a critical product failure, not a successful demo.
 
 ## Scaling path
 

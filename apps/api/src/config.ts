@@ -15,6 +15,13 @@ const optionalAddress = z.preprocess(
   (value) => (value === "" || value === undefined ? undefined : value),
   addressSchema.optional(),
 );
+const optionalUintString = z.preprocess(
+  (value) => (value === "" || value === undefined ? undefined : value),
+  z
+    .string()
+    .regex(/^(?:0|[1-9][0-9]*)$/u)
+    .optional(),
+);
 const boolFromEnv = z.preprocess((value) => {
   if (typeof value === "boolean") return value;
   if (value === "true") return true;
@@ -55,10 +62,12 @@ const envSchema = z
       z.string().min(1).optional(),
     ),
     OG_COMPUTE_TIMEOUT_MS: intFromEnv(60_000),
+    READINESS_TIMEOUT_MS: intFromEnv(10_000),
     VERIFIER_PRIVATE_KEY: optionalPrivateKey,
     RELAYER_PRIVATE_KEY: optionalPrivateKey,
     ACTIONPROOF_GUARD_ADDRESS: optionalAddress,
     ACTIONPROOF_AGENT_ADDRESS: optionalAddress,
+    OG_AGENTIC_ID: optionalUintString,
     DEMO_COUNTER_ADDRESS: optionalAddress,
     ENABLE_LIVE_WRITES: boolFromEnv.default(false),
     ALLOW_MAINNET_BROADCAST: boolFromEnv.default(false),

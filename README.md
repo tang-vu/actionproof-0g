@@ -36,6 +36,10 @@ The model can make a decision stricter. It can never clear a deterministic block
 _Screenshot is rendered from the checked-in application in explicit sandbox mode. Live mode uses the
 same UI but only shows 0G receipts returned by real adapters._
 
+![ActionProof mobile verification trace](docs/images/actionproof-mobile.png)
+
+_The same public verification and tamper workflow is exercised on the Pixel 7 Playwright viewport._
+
 ## Architecture
 
 ```mermaid
@@ -114,14 +118,18 @@ The production adapter pins `@0gfoundation/0g-storage-ts-sdk@1.2.11` and `ethers
 the exact canonical report bytes through a Turbo indexer, checks the returned root, downloads the
 object, compares bytes, parses/recanonicalizes it, and independently recomputes the SDK Merkle root.
 That final check is mandatory because the current high-level downloader proof option is not by
-itself sufficient evidence of proof validation.
+itself sufficient evidence of proof validation. Receipts preserve the Storage submission sequence
+and expose its direct StorageScan link; finalized deduplication is valid even when no new transaction
+hash is returned.
 
 ### Agentic ID
 
-ERC-7857 was investigated and deliberately kept out of the security-critical MVP. The current
-official walkthrough relies on a mock/replaceable oracle and lacks a clearly packaged production
-deployment. Claiming it would weaken the demo. ERC-8004 identity binding is a documented future
-option after the three core integrations are live.
+ActionProof optionally resolves an official ERC-8004 `agentId` from the published Identity Registry,
+reads `ownerOf`, `getAgentWallet`, and `tokenURI`, and binds that evidence into the canonical report.
+The registered wallet must equal the exact action-agent address or deterministic policy blocks the
+action. Resolution is read-only; registration is deliberately outside the automatic flow. ERC-7857
+remains deferred because its current production oracle/re-encryption path is not suitable for this
+firewall's critical path.
 
 ## Quick start
 
@@ -187,6 +195,7 @@ pnpm test:contracts
 pnpm build
 pnpm test:e2e
 pnpm audit:prod
+pnpm probe:0g        # public Chain/Compute-catalog/Storage-indexer probes; no keys or spend
 pnpm test:live       # opt-in configuration/readiness checks; no implicit spending
 ```
 
@@ -239,7 +248,7 @@ Please report vulnerabilities privately as described in [SECURITY.md](SECURITY.m
 2. Independent contract/application audit and KMS-backed threshold verification.
 3. Richer trace/state-diff simulation and protocol-aware policy modules.
 4. Durable queue/database, guard event indexer, monitoring, and redundant RPCs.
-5. Optional ERC-8004 agent identity; ERC-7857 only after its production oracle path is proven.
+5. Optional ERC-8004 reputation evidence; ERC-7857 only after its production oracle path is proven.
 
 No token, NFT sale, DAO, marketplace, custody feature, or unrelated chat product is planned.
 

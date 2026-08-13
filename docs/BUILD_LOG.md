@@ -12,9 +12,8 @@ authoritative timestamped change log; no history or timestamps are fabricated.
   upstream starter drift.
 - Selected and pinned the official Storage SDK npm artifact `1.2.11` with exact ethers peer
   `6.13.1`; documented the repository-manifest version drift and downloader proof caveat.
-- Deferred Agentic ID because the official ERC-7857 guide relies on a replaceable/mock oracle and
-  does not provide a production-ready critical-path deployment. Kept ERC-8004 as a future optional
-  identity layer.
+- Deferred ERC-7857 because its official guide relies on a replaceable/mock oracle. Selected the
+  official ERC-8004 registries for optional read-only identity evidence without automatic writes.
 
 ## 2026-08-13 — Cryptographic and contract core
 
@@ -40,6 +39,12 @@ authoritative timestamped change log; no history or timestamps are fabricated.
   signing. Every sandbox artifact remains labeled.
 - Added an asynchronous API job pipeline, atomic trace persistence, integration/readiness routes,
   demo fixtures, tamper verification, and an opt-in live smoke boundary.
+- Added keyless public probes for Chain RPC/chain ID, Compute model catalogs, and Storage indexer
+  node selection on both Galileo and Mainnet. Added live guard bytecode/verifier readiness checks.
+- Added optional ERC-8004 `ownerOf`/agent-wallet/URI resolution. Matching evidence is committed to
+  the report; configured lookup failures and wallet mismatch fail closed.
+- Normalized Storage `txSeq` receipts into direct StorageScan submission links, including successful
+  deduplicated uploads that return no new transaction hash.
 
 ## 2026-08-13 — Judge experience and delivery
 
@@ -47,7 +52,7 @@ authoritative timestamped change log; no history or timestamps are fabricated.
   verdict, public trace, agent history, integration truth, architecture, empty/error/timeout/block
   states, keyboard focus, reduced motion, and mobile layouts.
 - Added critical Playwright coverage for the landing trust message, safe trace, unlimited-approval
-  block, and tamper rejection.
+  block, fresh server-side evidence re-verification, and tamper rejection.
 - Rendered and visually inspected the full desktop trace and Pixel 7 journeys; fixed isolated test
   ports, CORS configuration, a timestamp hydration mismatch, and captured the checked-in README
   screenshot from the real application.
@@ -61,9 +66,9 @@ authoritative timestamped change log; no history or timestamps are fabricated.
 
 ## Validation record
 
-`pnpm verify` completed successfully on 2026-08-13 in 113.6 seconds. Paid 0G Compute, funded Storage
-upload, Galileo contract deployment, and mainnet broadcast remain accurately listed as external
-credential/funding/authorization blockers until performed.
+`pnpm verify` completed successfully on 2026-08-13 in 115.2 seconds after final readiness hardening.
+Paid 0G Compute, funded Storage upload, Galileo contract deployment, and mainnet broadcast remain
+accurately listed as external credential/funding/authorization blockers until performed.
 
 | Check                     | Result                                                                       |
 | ------------------------- | ---------------------------------------------------------------------------- |
@@ -71,12 +76,13 @@ credential/funding/authorization blockers until performed.
 | ESLint                    | Passed with zero warnings                                                    |
 | TypeScript                | Strict checks passed for Core, 0G adapters, API, and Web                     |
 | Core tests                | 10 passed                                                                    |
-| Adapter/API tests         | 13 adapter + 6 API tests passed                                              |
+| Adapter/API tests         | 17 adapter + 7 API tests passed                                              |
 | Foundry unit/fuzz tests   | 31 passed; four fuzz properties ran 512 cases each                           |
 | Production builds         | Contracts, Core, 0G adapters, API, and Next.js passed; guard runtime 6,127 B |
 | Playwright desktop/mobile | 6 passed across Chromium desktop and Pixel 7                                 |
-| Secret scan               | 98 repository files checked; passed                                          |
+| Secret scan               | 100 repository files checked; passed                                         |
 | Production audit          | No known vulnerabilities found                                               |
 | Sandbox smoke             | Safe executed; unlimited approval blocked; tamper verification rejected      |
 | RPC deployment dry-runs   | Galileo and Mainnet both passed; no broadcast                                |
+| Public 0G probes          | Chain, Compute catalog, and Storage indexer passed on Galileo and Mainnet    |
 | Live paid 0G smoke        | Not run — requires funded user credentials and explicit write approval       |

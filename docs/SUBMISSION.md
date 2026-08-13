@@ -11,7 +11,7 @@
 > ActionProof creates verifiable pre-execution evidence and enforces risk policy for autonomous
 > agent transactions on 0G.
 
-**Repository:** `[REPOSITORY_URL]`
+**Repository:** `https://github.com/tang-vu/actionproof-0g`
 
 **Live demo:** `[LIVE_DEMO_URL]`
 
@@ -23,7 +23,7 @@
 
 **Demo Token:** `[DEMO_TOKEN_ADDRESS]` — `[CHAINSCAN_URL]`
 
-Do not replace placeholders until links and bytecode are independently checked.
+Do not replace deployment/live placeholders until links and bytecode are independently checked.
 
 ## Short summary
 
@@ -50,9 +50,9 @@ win. The MVP uses only valueless demo contracts and is experimental, unaudited i
   fallback.
 - **0G Storage:** official TypeScript SDK and Turbo indexer; canonical report upload/retrieval;
   returned-root check; independent byte comparison and Merkle-root recomputation.
-- **Agentic ID:** researched and deliberately deferred. Current ERC-7857 production oracle/TEE path
-  is not packaged clearly enough to put on this firewall's critical path. ERC-8004 is documented as
-  a future optional identity enhancement.
+- **Agentic ID:** optional read-only ERC-8004 Identity Registry evidence binds the configured global
+  `agentId` and registered agent wallet into the report; wallet mismatch or resolution failure
+  blocks. Registration writes and ERC-7857 remain deliberately outside the critical path.
 
 ## Architecture summary
 
@@ -65,7 +65,7 @@ Anchoring consumes the nonce; execution has its own one-time state transition.
 ## Reproducibility
 
 ```bash
-git clone [REPOSITORY_URL]
+git clone https://github.com/tang-vu/actionproof-0g.git
 cd actionproof-0g
 corepack enable
 pnpm install
@@ -115,7 +115,7 @@ Open `http://127.0.0.1:3000`. The default is a clearly labeled sandbox. Follow
 >
 > Built for 0G Bridge by AKINDO — Wave 3. Experimental, open source, and using valueless demo assets.
 >
-> [REPOSITORY_URL] [DEMO_URL]
+> https://github.com/tang-vu/actionproof-0g [DEMO_URL]
 >
 > @0G_labs @0G_Builders @AKINDO_io #0GBridge #BuildOn0G
 
@@ -132,11 +132,12 @@ Publishing this post is an external action and requires owner approval.
 - Reports are public; private evidence/encryption is not implemented.
 - Paid Compute, Storage, testnet deployment, and mainnet proof require user-provided funded accounts,
   credentials, and explicit broadcast authorization.
-- ERC-7857 Agentic ID is deferred for the production-readiness reasons recorded in research.
+- ERC-8004 registration is not automated; ERC-7857 is deferred for the production-readiness reasons
+  recorded in research.
 
 ## Final submission checklist
 
-- [ ] Public repository URL replaces placeholder.
+- [x] Public repository URL is populated.
 - [ ] `pnpm verify` passes on public commit and CI is green.
 - [ ] README screenshot is from the same commit and mode is visible.
 - [ ] Galileo live Compute request receipt is captured without secrets.

@@ -803,6 +803,14 @@ code {
   font-size: 11px;
 }
 
+.service-list a {
+  display: inline-block;
+  margin-top: 5px;
+  color: var(--cyan);
+  font-family: var(--mono);
+  font-size: 9px;
+}
+
 .sandbox-note {
   padding-top: 15px;
 }
@@ -1425,6 +1433,28 @@ code {
   margin-left: auto;
 }
 
+.verify-evidence {
+  padding: 8px 10px;
+  border: 1px solid var(--line-bright);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 9px;
+  cursor: pointer;
+}
+
+.verify-evidence:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.verification-error {
+  margin: -8px 0 16px;
+  color: var(--red);
+  font-size: 11px;
+}
+
 .trace-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -2029,6 +2059,18 @@ code {
 
   .topbar .mode-pill {
     display: none;
+  }
+
+  .evidence-banner {
+    flex-wrap: wrap;
+  }
+
+  .evidence-banner > div {
+    min-width: calc(100% - 50px);
+  }
+
+  .evidence-banner .mode-pill {
+    margin-left: 44px;
   }
 
   .brand {

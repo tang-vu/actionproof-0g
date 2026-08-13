@@ -14,8 +14,10 @@ import { privateKeyToAccount } from "viem/accounts";
 import { describe, expect, it } from "vitest";
 
 import { ZgComputeRouterAdapter, type RouterCompletionTransport } from "./compute.js";
+import { ERC8004_IDENTITY_REGISTRIES, Erc8004IdentityResolver } from "./agentic-id.js";
 import { ZgChainAdapter } from "./chain.js";
 import { actionProofGuardAbi } from "./guard-abi.js";
+import { probePublicNetwork, type PublicProbeDependencies } from "./readiness.js";
 import { SandboxChainAdapter, SandboxComputeAdapter, SandboxStorageAdapter } from "./sandbox.js";
 import {
   ZgStorageAdapter,
@@ -203,6 +205,94 @@ describe("0G Compute Router", () => {
   });
 });
 
+describe("read-only public 0G readiness", () => {
+  it("validates chain ID, selected Compute model, and Storage node availability", async () => {
+    const dependencies: PublicProbeDependencies = {
+      async getChainState() {
+        return { chainId: 16602, blockNumber: 123n };
+      },
+      async getJson() {
+        return { data: [{ id: "demo/model", provider_count: 2 }] };
+      },
+      async selectStorageNodes() {
+        return 1;
+      },
+    };
+    const results = await probePublicNetwork(
+      {
+        chainId: 16602,
+        rpcUrl: "https://rpc.invalid",
+        computeBaseUrl: "https://compute.invalid/v1/",
+        storageIndexerUrl: "https://storage.invalid",
+        selectedModel: "demo/model",
+      },
+      dependencies,
+    );
+
+    expect(results).toHaveLength(3);
+    expect(results.every((result) => result.status === "available")).toBe(true);
+    expect(results.find((result) => result.id === "chain")?.detail).toContain("block 123");
+  });
+
+  it("reports each failed dependency without rejecting the whole probe", async () => {
+    const dependencies: PublicProbeDependencies = {
+      async getChainState() {
+        return { chainId: 1, blockNumber: 123n };
+      },
+      async getJson() {
+        return { data: [{ id: "other/model", provider_count: 1 }] };
+      },
+      async selectStorageNodes() {
+        return 0;
+      },
+    };
+    const results = await probePublicNetwork(
+      {
+        chainId: 16602,
+        rpcUrl: "https://rpc.invalid",
+        computeBaseUrl: "https://compute.invalid/v1",
+        storageIndexerUrl: "https://storage.invalid",
+        selectedModel: "demo/model",
+      },
+      dependencies,
+    );
+
+    expect(results.every((result) => result.status === "unavailable")).toBe(true);
+    expect(results.find((result) => result.id === "compute")?.detail).toContain("not listed");
+  });
+});
+
+describe("ERC-8004 Agentic ID", () => {
+  it("binds the official Galileo registry wallet to the exact action agent", async () => {
+    const expectedWallet = getAddress("0x4000000000000000000000000000000000000004");
+    const resolver = new Erc8004IdentityResolver({
+      publicClient: {
+        async readContract({ functionName }: { functionName: string }) {
+          if (functionName === "ownerOf") return requester;
+          if (functionName === "getAgentWallet") return expectedWallet;
+          if (functionName === "tokenURI") return "ipfs://actionproof-agent-card";
+          throw new Error(`unexpected function ${functionName}`);
+        },
+      } as never,
+      chainId: 16602,
+      explorerBaseUrl: "https://chainscan-galileo.0g.ai/",
+      clock: fixedClock,
+    });
+
+    const identity = await resolver.resolve("7", expectedWallet);
+    expect(identity).toMatchObject({
+      standard: "ERC-8004",
+      agentId: "7",
+      registry: ERC8004_IDENTITY_REGISTRIES[16602],
+      owner: requester,
+      agentWallet: expectedWallet,
+      matchesActionAgent: true,
+      checkedAt: fixedDate.toISOString(),
+    });
+    expect(identity.explorerUrl).toContain(identity.registry);
+  });
+});
+
 class MemoryStorageTransport implements StorageNetworkTransport {
   bytes: Uint8Array | undefined;
   readonly transactionHash = keccak256(toBytes("storage-upload"));
@@ -229,6 +319,7 @@ describe("0G Storage", () => {
     const adapter = new ZgStorageAdapter({
       indexerUrl: "https://indexer.invalid",
       rpcUrl: "https://rpc.invalid",
+      explorerUrl: "https://storagescan.invalid",
       signer: {} as never,
       clock: fixedClock,
       transport,
@@ -240,6 +331,8 @@ describe("0G Storage", () => {
     expect(uploaded.receipt).toMatchObject({
       mode: "0g",
       transactionHash: transport.transactionHash,
+      sequence: "1",
+      explorerUrl: "https://storagescan.invalid/submission/1",
       size: uploaded.canonicalBytes.byteLength,
     });
     expect(retrieved.report).toEqual(report);
@@ -261,6 +354,28 @@ describe("0G Storage", () => {
     await expect(adapter.retrieveAndVerify(uploaded.receipt.rootHash, report)).rejects.toThrow(
       "Merkle-root verification",
     );
+  });
+
+  it("accepts a deduplicated upload without a new transaction hash", async () => {
+    const transport = new MemoryStorageTransport();
+    const originalUpload = transport.upload.bind(transport);
+    transport.upload = async (file) => {
+      const [result] = await originalUpload(file);
+      if (!("rootHash" in result)) throw new Error("expected a single-root upload");
+      return [{ ...result, txHash: "", txSeq: 42 }, null];
+    };
+    const adapter = new ZgStorageAdapter({
+      indexerUrl: "https://indexer.invalid",
+      rpcUrl: "https://rpc.invalid",
+      signer: {} as never,
+      explorerUrl: "https://storagescan.invalid/",
+      transport,
+    });
+
+    const uploaded = await adapter.uploadReport(riskReport());
+    expect(uploaded.receipt.transactionHash).toBeUndefined();
+    expect(uploaded.receipt.sequence).toBe("42");
+    expect(uploaded.receipt.explorerUrl).toBe("https://storagescan.invalid/submission/42");
   });
 
   it("provides an explicitly labeled in-memory sandbox adapter", async () => {

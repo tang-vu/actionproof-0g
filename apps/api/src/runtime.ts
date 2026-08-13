@@ -1,15 +1,19 @@
 import {
+  Erc8004IdentityResolver,
   SandboxChainAdapter,
   SandboxComputeAdapter,
   SandboxStorageAdapter,
   ZgChainAdapter,
   ZgComputeRouterAdapter,
   ZgStorageAdapter,
+  actionProofGuardAbi,
+  probePublicNetwork,
   type ChainAdapter,
   type ComputeAdapter,
+  type PublicProbeResult,
   type StorageAdapter,
 } from "@actionproof/0g";
-import type { ModelRiskAssessment } from "@actionproof/core";
+import type { AgentIdentityEvidence, ModelRiskAssessment } from "@actionproof/core";
 import { JsonRpcProvider, Wallet } from "ethers";
 import { createPublicClient, createWalletClient, defineChain, http, type Address } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
@@ -17,12 +21,14 @@ import { privateKeyToAccount } from "viem/accounts";
 import { asPrivateKey, requireLiveValue, type AppConfig } from "./config.js";
 
 export interface RuntimeServiceStatus {
-  id: "chain" | "compute" | "storage";
+  id: "chain" | "compute" | "storage" | "identity";
   name: string;
   status: "available" | "unavailable" | "sandbox";
   detail: string;
   endpoint?: string;
   explorerUrl?: string;
+  latencyMs?: number;
+  checkedAt?: string;
 }
 
 /** Narrow boundary consumed by the API. Keep adapters behind this interface. */
@@ -32,7 +38,8 @@ export interface Runtime {
   readonly compute: ComputeAdapter;
   readonly storage: StorageAdapter;
   readonly requesterAddress?: Address;
-  integrationStatus(): RuntimeServiceStatus[];
+  integrationStatus(): Promise<RuntimeServiceStatus[]>;
+  resolveAgentIdentity(agent: Address): Promise<AgentIdentityEvidence | undefined>;
 }
 
 const SANDBOX_ALLOW: ModelRiskAssessment = {
@@ -55,7 +62,7 @@ export function createSandboxRuntime(config: AppConfig): Runtime {
     chain,
     compute,
     storage,
-    integrationStatus: () => [
+    integrationStatus: async () => [
       {
         id: "chain",
         name: "0G Chain",
@@ -74,8 +81,22 @@ export function createSandboxRuntime(config: AppConfig): Runtime {
         status: "sandbox",
         detail: "SANDBOX ONLY — in-memory bytes with the SDK Merkle algorithm; no paid upload.",
       },
+      {
+        id: "identity",
+        name: "ERC-8004 Agentic ID",
+        status: "unavailable",
+        detail: "Optional identity evidence is disabled in sandbox mode.",
+      },
     ],
+    resolveAgentIdentity: async () => undefined,
   };
+}
+
+function decorateProbe(
+  result: PublicProbeResult,
+  extra: Partial<RuntimeServiceStatus>,
+): RuntimeServiceStatus {
+  return { ...result, ...extra };
 }
 
 export function createLiveRuntime(config: AppConfig): Runtime {
@@ -93,6 +114,10 @@ export function createLiveRuntime(config: AppConfig): Runtime {
   const verifier = privateKeyToAccount(
     asPrivateKey(config.VERIFIER_PRIVATE_KEY, "VERIFIER_PRIVATE_KEY"),
   );
+  const guardAddress = requireLiveValue(
+    config.ACTIONPROOF_GUARD_ADDRESS,
+    "ACTIONPROOF_GUARD_ADDRESS",
+  ) as Address;
   const chainDefinition = defineChain({
     id: config.OG_CHAIN_ID,
     name: config.OG_NETWORK === "galileo" ? "0G Galileo Testnet" : "0G Mainnet",
@@ -111,10 +136,7 @@ export function createLiveRuntime(config: AppConfig): Runtime {
     walletClient,
     relayerAccount: relayer,
     verifierAccount: verifier,
-    guardAddress: requireLiveValue(
-      config.ACTIONPROOF_GUARD_ADDRESS,
-      "ACTIONPROOF_GUARD_ADDRESS",
-    ) as Address,
+    guardAddress,
     explorerBaseUrl: explorerUrl,
   });
   const compute = new ZgComputeRouterAdapter({
@@ -134,40 +156,108 @@ export function createLiveRuntime(config: AppConfig): Runtime {
     signer: storageSigner,
     explorerUrl: storageExplorer,
   });
-  const available = config.liveWriteEnabled ? "available" : "unavailable";
-  const gateDetail = config.liveWriteEnabled
-    ? "Configured for live use; readiness does not claim a paid request has succeeded."
-    : "Configured but live writes are disabled by ENABLE_LIVE_WRITES.";
+  const identityResolver =
+    config.OG_AGENTIC_ID === undefined
+      ? undefined
+      : new Erc8004IdentityResolver({
+          publicClient,
+          chainId: config.OG_CHAIN_ID as 16602 | 16661,
+          explorerBaseUrl: explorerUrl,
+        });
+  let cachedProbe: { expiresAt: number; services: RuntimeServiceStatus[] } | undefined;
+
+  const integrationStatus = async (): Promise<RuntimeServiceStatus[]> => {
+    if (cachedProbe && cachedProbe.expiresAt > Date.now()) return cachedProbe.services;
+    const publicResults = await probePublicNetwork({
+      chainId: config.OG_CHAIN_ID,
+      rpcUrl,
+      computeBaseUrl: computeUrl,
+      storageIndexerUrl: storageIndexer,
+      ...(config.OG_COMPUTE_MODEL ? { selectedModel: config.OG_COMPUTE_MODEL } : {}),
+      timeoutMs: config.READINESS_TIMEOUT_MS,
+    });
+    const chainProbe = publicResults.find((service) => service.id === "chain");
+    if (chainProbe?.status === "available") {
+      try {
+        const [bytecode, onchainVerifier] = await Promise.all([
+          publicClient.getBytecode({ address: guardAddress }),
+          publicClient.readContract({
+            address: guardAddress,
+            abi: actionProofGuardAbi,
+            functionName: "authorizedVerifier",
+          }),
+        ]);
+        if (!bytecode || bytecode === "0x") throw new Error("configured guard has no bytecode");
+        if (onchainVerifier.toLowerCase() !== verifier.address.toLowerCase()) {
+          throw new Error(
+            `guard verifier mismatch: onchain=${onchainVerifier}, configured=${verifier.address}`,
+          );
+        }
+        chainProbe.detail += ` Guard bytecode and verifier ${verifier.address} match.`;
+      } catch (error) {
+        chainProbe.status = "unavailable";
+        chainProbe.detail = `RPC passed, but ActionProofGuard readiness failed: ${error instanceof Error ? error.message : "unknown guard error"}`;
+      }
+    }
+
+    const services: RuntimeServiceStatus[] = publicResults.map((result) =>
+      result.id === "chain"
+        ? decorateProbe(result, { endpoint: rpcUrl, explorerUrl })
+        : result.id === "compute"
+          ? decorateProbe(result, { endpoint: computeUrl })
+          : decorateProbe(result, { endpoint: storageIndexer, explorerUrl: storageExplorer }),
+    );
+    if (identityResolver && config.OG_AGENTIC_ID !== undefined) {
+      const started = Date.now();
+      try {
+        const identity = await identityResolver.resolve(
+          config.OG_AGENTIC_ID,
+          config.defaultAgentAddress,
+        );
+        services.push({
+          id: "identity",
+          name: "ERC-8004 Agentic ID",
+          status: identity.matchesActionAgent ? "available" : "unavailable",
+          detail: identity.matchesActionAgent
+            ? `Agent ${identity.agentId} is registered and binds the configured action-agent wallet.`
+            : `Agent ${identity.agentId} wallet ${identity.agentWallet} does not match ${config.defaultAgentAddress}.`,
+          explorerUrl: identity.explorerUrl,
+          latencyMs: Date.now() - started,
+          checkedAt: identity.checkedAt,
+        });
+      } catch (error) {
+        services.push({
+          id: "identity",
+          name: "ERC-8004 Agentic ID",
+          status: "unavailable",
+          detail: `Configured identity could not be resolved: ${error instanceof Error ? error.message : "unknown identity error"}`,
+          latencyMs: Date.now() - started,
+          checkedAt: new Date().toISOString(),
+        });
+      }
+    } else {
+      services.push({
+        id: "identity",
+        name: "ERC-8004 Agentic ID",
+        status: "unavailable",
+        detail: "Optional read-only evidence is not configured; set OG_AGENTIC_ID to enable it.",
+      });
+    }
+    cachedProbe = { expiresAt: Date.now() + 30_000, services };
+    return services;
+  };
+
   return {
     mode: "live",
     chain,
     compute,
     storage,
     requesterAddress: relayer.address,
-    integrationStatus: () => [
-      {
-        id: "chain",
-        name: "0G Chain",
-        status: available,
-        detail: gateDetail,
-        endpoint: rpcUrl,
-      },
-      {
-        id: "compute",
-        name: "0G Compute Router",
-        status: available,
-        detail: gateDetail,
-        endpoint: computeUrl,
-      },
-      {
-        id: "storage",
-        name: "0G Storage Turbo",
-        status: available,
-        detail: `${gateDetail} Report receipts link to 0G StorageScan.`,
-        endpoint: storageIndexer,
-        explorerUrl: storageExplorer,
-      },
-    ],
+    integrationStatus,
+    resolveAgentIdentity: async (agent) => {
+      if (!identityResolver || config.OG_AGENTIC_ID === undefined) return undefined;
+      return identityResolver.resolve(config.OG_AGENTIC_ID, agent);
+    },
   };
 }
 

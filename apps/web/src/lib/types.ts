@@ -67,12 +67,16 @@ export interface ActionTrace {
 
 export interface IntegrationStatus {
   mode: "live" | "sandbox";
+  writesEnabled: boolean;
   network: { name: string; chainId: number };
   services: Array<{
-    id: "chain" | "compute" | "storage";
+    id: "chain" | "compute" | "storage" | "identity";
     name: string;
     status: "available" | "unavailable" | "sandbox";
     detail: string;
     endpoint?: string;
+    explorerUrl?: string;
+    latencyMs?: number;
+    checkedAt?: string;
   }>;
 }

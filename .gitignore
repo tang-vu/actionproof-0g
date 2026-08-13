@@ -24,7 +24,8 @@ packages/contracts/lib/
 # Codex local state and scratch files
 .codex/
 .codex-*/
-/AGENTS.md
+**/AGENTS.md
+**/CLAUDE.md
 AGENTS.local.md
 CODEX.local.md
 

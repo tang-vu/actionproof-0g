@@ -21,7 +21,7 @@ This note records what the project will build against, the upstream inconsistenc
 | 2026-08-13 | Storage              | Use Turbo and pin `@0gfoundation/0g-storage-ts-sdk@1.2.11` with `ethers@6.13.1`; test the installed artifact's API and integrity behavior in CI.                   | npm `latest` is `1.2.11`, while the repository manifest still says `1.2.9`. Exact pinning makes the executed tarball reproducible; contract tests protect against documentation/source drift.                                                  |
 | 2026-08-13 | Storage integrity    | Independently recompute the Merkle root over downloaded raw bytes and compare it with the committed root.                                                          | The published `1.2.11` high-level downloader accepts `proof: true` but still contains `TODO: add proof check`; the flag is not sufficient evidence of verification.                                                                            |
 | 2026-08-13 | Storage record shape | Store the canonical report as a small single-root object. Persist network, mode, root, transaction hash/sequence, byte size, and media/schema metadata separately. | A root commits bytes, not a filename or application metadata. Fragment arrays require ordered manifests and fragment-level verification.                                                                                                       |
-| 2026-08-13 | Agentic ID           | Defer ERC-7857 Agentic ID minting/transfers from the MVP. Revisit ERC-8004 registration independently if discoverability becomes a requirement.                    | The ERC-7857 integration guide is illustrative and depends on a mock/replacement oracle; no production-ready official SDK/deployment path is specified. ERC-8004 registries, by contrast, have published addresses on both networks.           |
+| 2026-08-13 | Agentic ID           | Add optional read-only ERC-8004 identity evidence; defer registration writes and ERC-7857 minting/transfers.                                                       | Official ERC-8004 registries and read ABI are published on both networks. Wallet mismatch or configured-resolution failure can safely fail closed without putting an identity write or mock oracle on the critical path.                       |
 
 ## Network and service configuration
 
@@ -226,7 +226,7 @@ Decision: continue passing `true` for forward compatibility, but never treat a n
 
 The fee and signer requirements are described in the [Storage CLI guide](https://docs.0g.ai/developer-hub/building-on-0g/storage/storage-cli); exact option behavior is implemented in the [Uploader source](https://github.com/0gfoundation/0g-storage-ts-sdk/blob/main/src.ts/transfer/Uploader.ts).
 
-## Agentic ID deferral
+## Agentic ID decision
 
 0G documents two related but different identity surfaces:
 
@@ -242,7 +242,13 @@ ERC-8004 has a narrower, independently usable official surface with published re
 | Identity   | `0x8004A818BFB912233c491871b3d84c89A494BD9e` | `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` |
 | Reputation | `0x8004B663056A597Dffe9eCcC1965A193B7388713` | `0x8004BAa17C55a88189AE136b182e5fdA19dE9b63` |
 
-Registration is still deferred because it is not required to prove the core report-storage-attestation-action flow. If adopted later, the agent card must describe stable endpoints/capabilities, registration must be a separately approved on-chain write, and the global `agentId` must be persisted with its chain and registry address.
+ActionProof now implements the safe subset as an optional read-only resolver. Given `OG_AGENTIC_ID`,
+it reads `ownerOf`, `getAgentWallet`, and `tokenURI` from the official network registry and adds the
+registry, chain, owner, wallet, URI, timestamp, and match result to the canonical risk report. The
+registered wallet must match the exact action-agent address. A mismatch produces
+`AGENTIC_ID_WALLET_MISMATCH`; a configured resolver failure produces `AGENTIC_ID_UNAVAILABLE`.
+Both are deterministic blocking findings. Registration remains a separately approved external
+write, and ERC-7857 remains deferred for the production-readiness reasons above.
 
 ## Contradictions and deprecations to guard against
 

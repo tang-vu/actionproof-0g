@@ -44,9 +44,13 @@ OG_STORAGE_PRIVATE_KEY=<separate low-value server-only 0x-prefixed key>
 OG_COMPUTE_BASE_URL=https://router-api-testnet.integratenetwork.work/v1
 OG_COMPUTE_API_KEY=<server-only sk- key>
 OG_COMPUTE_MODEL=<currently listed model with JSON mode>
+READINESS_TIMEOUT_MS=10000
 VERIFIER_PRIVATE_KEY=<server-only 0x-prefixed key>
 RELAYER_PRIVATE_KEY=<server-only 0x-prefixed key>
 ACTIONPROOF_GUARD_ADDRESS=<deployed guard>
+ACTIONPROOF_AGENT_ADDRESS=<exact action-agent wallet>
+# Optional; when set, its official ERC-8004 agentWallet must match ACTIONPROOF_AGENT_ADDRESS.
+OG_AGENTIC_ID=<global uint256 agent ID>
 DEMO_COUNTER_ADDRESS=<deployed demo counter>
 DEMO_TOKEN_ADDRESS=<deployed demo token>
 ENABLE_LIVE_WRITES=true
@@ -151,8 +155,14 @@ confirm source/ABI/settings, and add direct links to the deployment record and R
 4. Run the non-spending checks first:
 
 ```bash
+pnpm probe:0g
 pnpm test:live
 ```
+
+`pnpm probe:0g` needs no key and makes no paid request. It checks the public Chain RPC and chain ID,
+the unauthenticated Compute `/models` catalog, and Storage indexer node selection on both official
+networks. Live API readiness additionally checks guard bytecode, the onchain authorized verifier,
+the configured model, and optional ERC-8004 wallet binding.
 
 5. After explicitly enabling Galileo writes, run the full safe scenario and retain sanitized
    receipts. The smoke script never treats sandbox output as a live success.
@@ -192,6 +202,8 @@ Use a managed redundant RPC for production and monitor Router/indexer/RPC health
 - [ ] Owner rotation/recovery procedure tested.
 - [ ] Managed mainnet RPC and fallback are configured; chain ID check returns `16661`.
 - [ ] Current 0G Compute model, price, key scope, and balance are reviewed.
+- [ ] `pnpm probe:0g` passes and live `/ready` confirms guard bytecode/verifier/model/indexer checks.
+- [ ] If `OG_AGENTIC_ID` is enabled, its registered wallet equals the exact configured action agent.
 - [ ] Storage fee estimate and independent download/root verification succeed on a unique object.
 - [ ] Mainnet deployer is funded with a deliberate maximum spend.
 - [ ] `ENABLE_LIVE_WRITES=true` and `ALLOW_MAINNET_BROADCAST=true` are approved for one window only.

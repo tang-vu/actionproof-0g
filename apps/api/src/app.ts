@@ -33,7 +33,9 @@ const createJobSchema = z
     execute: z.boolean().default(false),
   })
   .strict();
-const tamperSchema = z.object({ mutation: z.enum(["calldata", "reportRoot", "nonce"]) }).strict();
+const verificationSchema = z
+  .object({ mutation: z.enum(["calldata", "reportRoot", "nonce"]).optional() })
+  .strict();
 
 export interface BuildAppOptions {
   env?: RawEnv;
@@ -186,13 +188,24 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
         ? "SANDBOX ONLY — no production services"
         : "LIVE CONFIGURED — paid success is not implied",
   });
-  const readiness = (_request: unknown, reply: { code(status: number): unknown }) => {
-    const ready = runtime.mode === "sandbox" || config.liveWriteEnabled;
+  const readiness = async (_request: unknown, reply: { code(status: number): unknown }) => {
+    const services = await runtime.integrationStatus();
+    const coreAvailable = services
+      .filter((service) => service.id !== "identity")
+      .every((service) => service.status === "available" || service.status === "sandbox");
+    const identityAvailable =
+      config.OG_AGENTIC_ID === undefined ||
+      services.some((service) => service.id === "identity" && service.status === "available");
+    const ready =
+      (runtime.mode === "sandbox" || config.liveWriteEnabled) && coreAvailable && identityAvailable;
     if (!ready) reply.code(503);
     return {
       ready,
       mode: runtime.mode,
-      reason: ready ? "runtime initialized" : "live write safety gate is disabled",
+      reason: ready
+        ? "runtime and required integration probes passed"
+        : "a safety gate or required integration probe failed",
+      services,
     };
   };
   app.get("/health", health);
@@ -202,11 +215,12 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
 
   app.get("/v1/integrations", async () => ({
     mode: runtime.mode,
+    writesEnabled: runtime.mode === "live" && config.liveWriteEnabled,
     network: {
       name: config.OG_NETWORK === "galileo" ? "0G Galileo Testnet" : "0G Mainnet",
       chainId: config.OG_CHAIN_ID,
     },
-    services: runtime.integrationStatus(),
+    services: await runtime.integrationStatus(),
   }));
 
   app.get("/v1/nonces/:requester", async (request) => {
@@ -241,9 +255,9 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   });
   app.post("/v1/traces/:id/verify", async (request) => {
     const { id } = idParamsSchema.parse(request.params);
-    const body = tamperSchema.parse(request.body);
+    const body = verificationSchema.parse(request.body ?? {});
     const trace = store.getTrace(id) ?? notFound("Trace");
-    return orchestrator.verify(tamperedTrace(trace, body.mutation));
+    return orchestrator.verify(body.mutation ? tamperedTrace(trace, body.mutation) : trace);
   });
 
   app.get("/v1/reports/:rootHash", async (request) => {

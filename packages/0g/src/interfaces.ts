@@ -1,5 +1,6 @@
 import type {
   ActionRequest,
+  AgentIdentityEvidence,
   Attestation,
   ChainReceipt,
   Finding,
@@ -17,6 +18,7 @@ export interface RiskAssessmentInput {
   simulation: SimulationResult;
   deterministicFindings: Finding[];
   policyVersion: string;
+  agentIdentity?: AgentIdentityEvidence;
 }
 
 export interface ComputeAssessmentResult {

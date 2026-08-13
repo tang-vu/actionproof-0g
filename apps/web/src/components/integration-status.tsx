@@ -42,6 +42,10 @@ export function IntegrationStatus() {
               {status.network.name} · {status.network.chainId}
             </strong>
           </div>
+          <div className="network-line">
+            <span>Paid/write path</span>
+            <strong>{status.writesEnabled ? "Explicitly enabled" : "Disabled"}</strong>
+          </div>
           <ul className="service-list">
             {status.services.map((service) => (
               <li key={service.id}>
@@ -49,9 +53,17 @@ export function IntegrationStatus() {
                 <div>
                   <div className="service-title">
                     <strong>{service.name}</strong>
-                    <span>{labels[service.status]}</span>
+                    <span>
+                      {labels[service.status]}
+                      {service.latencyMs === undefined ? "" : ` · ${service.latencyMs}ms`}
+                    </span>
                   </div>
                   <p>{service.detail}</p>
+                  {service.explorerUrl && (
+                    <a href={service.explorerUrl} target="_blank" rel="noreferrer">
+                      Open official explorer ↗
+                    </a>
+                  )}
                 </div>
               </li>
             ))}

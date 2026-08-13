@@ -73,7 +73,8 @@ External funded credentials and explicit broadcast approval are the remaining li
 2. Independent contract/application audit and KMS-backed threshold verifier.
 3. Richer state-diff tracing and protocol-specific policies.
 4. Durable queue/database and event indexer.
-5. Optional ERC-8004 identity binding; ERC-7857 only after its production oracle path is proven.
+5. Extend the implemented read-only ERC-8004 identity binding with separately approved registration
+   and reputation evidence; keep ERC-7857 out until its production oracle path is proven.
 
 No token. No custody. No claim that AI guarantees safety.
 

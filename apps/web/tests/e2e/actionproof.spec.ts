@@ -19,11 +19,18 @@ test("safe action produces a verifiable trace and rejects tampering", async ({
   await page.getByRole("link", { name: /Open public trace/ }).click();
   await expect(page.getByText("All evidence bindings verify")).toBeVisible();
   await expect(page.getByText(/sandbox mode/)).toBeVisible();
+  const verifyButton = page.getByRole("button", { name: "Verify evidence now" });
+  await expect(verifyButton).toBeVisible();
+  await verifyButton.click();
+  await expect(verifyButton).toBeEnabled();
 
-  if (process.env.ACTIONPROOF_CAPTURE_SCREENSHOT === "1" && testInfo.project.name === "chromium") {
+  if (process.env.ACTIONPROOF_CAPTURE_SCREENSHOT === "1") {
     await page.addStyleTag({ content: "nextjs-portal { display: none !important; }" });
     await page.screenshot({
-      path: "../../docs/images/actionproof-console.png",
+      path:
+        testInfo.project.name === "chromium"
+          ? "../../docs/images/actionproof-console.png"
+          : "../../docs/images/actionproof-mobile.png",
       fullPage: true,
     });
   }

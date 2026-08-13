@@ -19,6 +19,7 @@ Fast review:
 pnpm install
 pnpm verify
 pnpm demo
+pnpm probe:0g
 pnpm dev
 ```
 
@@ -57,9 +58,12 @@ Then open `http://127.0.0.1:3000`.
 
 ### Agentic ID
 
-- `docs/RESEARCH.md` records a deliberate defer decision rather than claiming a mock ERC-7857 oracle
-  as production identity. The current ERC-8004 registry addresses and safe future integration path
-  are documented.
+- [`agentic-id.ts`](../packages/0g/src/agentic-id.ts) performs optional read-only lookups against the
+  official ERC-8004 Identity Registry and binds owner/wallet/URI evidence into canonical reports.
+- Wallet mismatch and configured-resolution failure are deterministic blocks. Registration writes
+  and the mock-oracle-dependent ERC-7857 path remain deliberately deferred.
+- [`readiness.ts`](../packages/0g/src/readiness.ts) exposes no-key/no-spend Chain, Compute model
+  catalog, and Storage node-selection probes; `pnpm probe:0g` exercises Galileo and Mainnet.
 
 ## Technical execution, architecture, completeness, security — 20%
 
@@ -89,8 +93,9 @@ Architecture details and diagrams are in `docs/ARCHITECTURE.md` and the `/archit
 | Real integration status vs unavailable/sandbox      | Landing/analyze runtime status panel                                |
 | Public independent evidence                         | `/trace/:id` with hashes, receipts, checks, report, and tamper test |
 
-No users, partners, audits, deployments, transaction IDs, or success metrics are invented. Repository
-and live demo URLs remain explicit placeholders until the owner publishes them.
+No users, partners, audits, deployments, transaction IDs, or success metrics are invented. The public
+repository URL is populated; live demo and deployment URLs remain placeholders until authorized work
+creates verifiable evidence.
 
 ## Current external blockers
 

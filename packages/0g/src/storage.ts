@@ -71,12 +71,24 @@ function sameBytes(left: Uint8Array, right: Uint8Array): boolean {
   return left.every((value, index) => value === right[index]);
 }
 
-function normalizeUpload(result: UploadResult, expectedRoot: Hex): { transactionHash?: Hex } {
+function optionalTransactionHash(value: string | undefined): Hex | undefined {
+  if (value === undefined || value.length === 0) return undefined;
+  return bytes32Schema.parse(value) as Hex;
+}
+
+function normalizeUpload(
+  result: UploadResult,
+  expectedRoot: Hex,
+): { transactionHash?: Hex; sequence: string } {
   if ("rootHash" in result) {
     if (result.rootHash.toLowerCase() !== expectedRoot.toLowerCase()) {
       throw new Error("0G Storage upload root does not match the locally calculated root");
     }
-    return { transactionHash: bytes32Schema.parse(result.txHash) as Hex };
+    const transactionHash = optionalTransactionHash(result.txHash);
+    return {
+      ...(transactionHash ? { transactionHash } : {}),
+      sequence: result.txSeq.toString(),
+    };
   }
 
   const index = result.rootHashes.findIndex(
@@ -86,8 +98,19 @@ function normalizeUpload(result: UploadResult, expectedRoot: Hex): { transaction
     throw new Error("0G Storage fragmented upload omitted the locally calculated root");
   }
   const txHash = result.txHashes[index];
-  if (txHash === undefined) throw new Error("0G Storage upload omitted its transaction hash");
-  return { transactionHash: bytes32Schema.parse(txHash) as Hex };
+  const txSeq = result.txSeqs[index];
+  if (txSeq === undefined) throw new Error("0G Storage fragmented upload omitted its sequence");
+  const transactionHash = optionalTransactionHash(txHash);
+  return {
+    ...(transactionHash ? { transactionHash } : {}),
+    sequence: txSeq.toString(),
+  };
+}
+
+function storageExplorerLink(baseUrl: string | undefined, sequence: string): string | undefined {
+  return baseUrl === undefined
+    ? undefined
+    : `${baseUrl.replace(/\/$/u, "")}/submission/${sequence}`;
 }
 
 function decodeCanonicalReport(bytes: Uint8Array): RiskReport {
@@ -138,9 +161,12 @@ export class ZgStorageAdapter implements StorageAdapter {
     const receipt = storageReceiptSchema.parse({
       mode: "0g",
       rootHash,
-      transactionHash: normalized.transactionHash,
+      ...(normalized.transactionHash ? { transactionHash: normalized.transactionHash } : {}),
+      sequence: normalized.sequence,
       indexerUrl: this.#indexerUrl,
-      ...(this.#explorerUrl ? { explorerUrl: this.#explorerUrl } : {}),
+      ...(storageExplorerLink(this.#explorerUrl, normalized.sequence)
+        ? { explorerUrl: storageExplorerLink(this.#explorerUrl, normalized.sequence) }
+        : {}),
       uploadedAt: this.#clock().toISOString(),
       size: canonicalBytes.byteLength,
     });
@@ -167,4 +193,5 @@ export const storageInternals = {
   canonicalReportBytes,
   decodeCanonicalReport,
   normalizeUpload,
+  storageExplorerLink,
 };
