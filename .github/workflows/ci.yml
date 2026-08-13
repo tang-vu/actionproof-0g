@@ -1,0 +1,54 @@
+name: deterministic-verification
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      ACTIONPROOF_MODE: sandbox
+      NEXT_PUBLIC_ACTIONPROOF_MODE: sandbox
+      NEXT_PUBLIC_API_URL: http://127.0.0.1:8787
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.20.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.7.1
+
+      - name: Install pinned dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Chromium for the critical journey
+        run: pnpm --filter @actionproof/web exec playwright install --with-deps chromium
+
+      - name: Verify deterministic build
+        run: pnpm verify
+
+      - name: Upload browser failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-evidence
+          path: |
+            apps/web/playwright-report
+            apps/web/test-results
+          if-no-files-found: ignore
+          retention-days: 7

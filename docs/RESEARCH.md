@@ -1,7 +1,9 @@
 # 0G integration research and architecture decisions
 
-Status: accepted baseline for the first implementation  
-Last verified: 2026-08-13  
+Status: accepted baseline for the first implementation
+
+Last verified: 2026-08-13
+
 Scope: 0G Chain, Compute, Storage, and Agentic ID surfaces used or considered by ActionProof
 
 This note records what the project will build against, the upstream inconsistencies that affect that choice, and the checks required before any live claim. Sources are current 0G documentation, Builder Hub, official 0G GitHub repositories, and the published npm artifacts. No paid inference, storage upload, contract deployment, or other funded live test was performed while preparing this research.
