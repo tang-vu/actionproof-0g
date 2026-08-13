@@ -1,0 +1,11 @@
+{
+  "name": "@actionproof/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "forge build --sizes",
+    "format": "forge fmt",
+    "format:check": "forge fmt --check",
+    "test": "forge test -vvv"
+  }
+}

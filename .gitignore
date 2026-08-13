@@ -1,0 +1,35 @@
+# dependencies and build output
+node_modules/
+.next/
+dist/
+out/
+coverage/
+artifacts/
+cache/
+broadcast/
+playwright-report/
+test-results/
+
+# local runtime data
+.actionproof/
+.actionproof-data/
+apps/api/data/
+tmp/
+
+# local tooling
+.tools/
+packages/contracts/lib/
+
+# environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# editor / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

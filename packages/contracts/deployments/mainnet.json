@@ -1,0 +1,15 @@
+{
+  "network": "0G Mainnet",
+  "chainId": 16661,
+  "rpc": "https://evmrpc.0g.ai",
+  "explorer": "https://chainscan.0g.ai",
+  "deployedAt": null,
+  "deployer": null,
+  "authorizedVerifier": null,
+  "contracts": {
+    "ActionProofGuard": null,
+    "DemoCounter": null,
+    "DemoToken": null,
+    "ReentrantTarget": null
+  }
+}

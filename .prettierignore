@@ -1,0 +1,11 @@
+.next
+artifacts
+cache
+coverage
+dist
+node_modules
+out
+playwright-report
+pnpm-lock.yaml
+test-results
+packages/contracts/lib
