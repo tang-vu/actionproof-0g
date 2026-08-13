@@ -1,0 +1,29 @@
+{
+  "name": "@actionproof/0g",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run src/adapters.test.ts --coverage.enabled=false"
+  },
+  "dependencies": {
+    "@0gfoundation/0g-storage-ts-sdk": "1.2.11",
+    "@actionproof/core": "workspace:*",
+    "ethers": "6.13.1",
+    "openai": "7.4.0",
+    "viem": "2.55.13"
+  },
+  "devDependencies": {
+    "vitest": "4.1.10"
+  }
+}
