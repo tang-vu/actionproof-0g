@@ -61,7 +61,7 @@ authoritative timestamped change log; no history or timestamps are fabricated.
 
 ## Validation record
 
-`pnpm verify` completed successfully on 2026-08-13 in 117.3 seconds. Paid 0G Compute, funded Storage
+`pnpm verify` completed successfully on 2026-08-13 in 113.6 seconds. Paid 0G Compute, funded Storage
 upload, Galileo contract deployment, and mainnet broadcast remain accurately listed as external
 credential/funding/authorization blockers until performed.
 
@@ -75,7 +75,7 @@ credential/funding/authorization blockers until performed.
 | Foundry unit/fuzz tests   | 31 passed; four fuzz properties ran 512 cases each                           |
 | Production builds         | Contracts, Core, 0G adapters, API, and Next.js passed; guard runtime 6,127 B |
 | Playwright desktop/mobile | 6 passed across Chromium desktop and Pixel 7                                 |
-| Secret scan               | 99 repository files checked; passed                                          |
+| Secret scan               | 98 repository files checked; passed                                          |
 | Production audit          | No known vulnerabilities found                                               |
 | Sandbox smoke             | Safe executed; unlimited approval blocked; tamper verification rejected      |
 | RPC deployment dry-runs   | Galileo and Mainnet both passed; no broadcast                                |
