@@ -26,6 +26,7 @@ import {
   type Transport,
   type WalletClient,
 } from "viem";
+import { z } from "zod";
 
 import { actionProofGuardAbi, type GuardAttestation } from "./guard-abi.js";
 import type { AnchorVerification, ChainAdapter, ChainSubmission, Clock } from "./interfaces.js";
@@ -38,8 +39,29 @@ export interface ZgChainConfig {
   verifierAccount: LocalAccount;
   guardAddress: Address;
   explorerBaseUrl?: string;
+  explorerApiUrl?: string;
+  fetchFn?: typeof fetch;
+  sourceVerificationTimeoutMs?: number;
   clock?: Clock;
 }
+
+const explorerSourceResponseSchema = z
+  .object({
+    status: z.string(),
+    message: z.string().optional(),
+    result: z.union([
+      z.string(),
+      z.array(
+        z
+          .object({
+            SourceCode: z.string(),
+            ABI: z.string().optional(),
+          })
+          .passthrough(),
+      ),
+    ]),
+  })
+  .passthrough();
 
 function guardAttestation(attestation: Attestation): GuardAttestation {
   return toTypedAttestation(attestation);
@@ -83,9 +105,14 @@ export class ZgChainAdapter implements ChainAdapter {
       });
     }
     let targetHasCode = false;
+    let targetVerification: SimulationResult["targetVerification"] = "unknown";
     try {
-      const bytecode = await this.#config.publicClient.getBytecode({ address: action.target });
+      const [bytecode, verification] = await Promise.all([
+        this.#config.publicClient.getBytecode({ address: action.target }),
+        this.#targetVerification(action.target),
+      ]);
       targetHasCode = bytecode !== undefined && bytecode !== "0x";
+      targetVerification = verification;
       const request = {
         from: this.#config.guardAddress,
         to: action.target,
@@ -103,7 +130,7 @@ export class ZgChainAdapter implements ChainAdapter {
         success: true,
         networkChainId: chainId,
         targetHasCode,
-        targetVerification: "unknown",
+        targetVerification,
         gasEstimate: BigInt(gas).toString(),
         returnData,
         effects: [],
@@ -114,11 +141,41 @@ export class ZgChainAdapter implements ChainAdapter {
         success: false,
         networkChainId: chainId,
         targetHasCode,
-        targetVerification: "unknown",
+        targetVerification,
         error: errorMessage(error).slice(0, 1_000),
         effects: [],
         observedAt: this.#clock().toISOString(),
       });
+    }
+  }
+
+  async #targetVerification(target: Address): Promise<SimulationResult["targetVerification"]> {
+    if (this.#config.explorerApiUrl === undefined) return "unknown";
+    const endpoint = new URL(this.#config.explorerApiUrl);
+    endpoint.searchParams.set("module", "contract");
+    endpoint.searchParams.set("action", "getsourcecode");
+    endpoint.searchParams.set("address", target);
+    try {
+      const response = await (this.#config.fetchFn ?? fetch)(endpoint, {
+        headers: { accept: "application/json" },
+        signal: AbortSignal.timeout(this.#config.sourceVerificationTimeoutMs ?? 5_000),
+      });
+      if (!response.ok) return "unknown";
+      const payload = explorerSourceResponseSchema.parse(await response.json());
+      if (payload.status === "1" && Array.isArray(payload.result)) {
+        return payload.result.some((contract) => contract.SourceCode.trim().length > 0)
+          ? "verified"
+          : "unverified";
+      }
+      if (payload.status === "0" && typeof payload.result === "string") {
+        const result = payload.result.toLowerCase();
+        if (result.includes("not verified") || result.includes("source code not verified")) {
+          return "unverified";
+        }
+      }
+      return "unknown";
+    } catch {
+      return "unknown";
     }
   }
 

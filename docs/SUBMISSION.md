@@ -17,13 +17,18 @@
 
 **Demo video:** `[DEMO_VIDEO_URL]`
 
-**0G Chain deployment:** `[ACTIONPROOF_GUARD_ADDRESS]` — `[CHAINSCAN_URL]`
+**0G Chain deployment:** `0xAE7bB700296d25FC4fB2EC3dBCCda8348f3b7d5e` —
+`https://chainscan-galileo.0g.ai/address/0xae7bb700296d25fc4fb2ec3dbccda8348f3b7d5e`
 
-**Demo Counter:** `[DEMO_COUNTER_ADDRESS]` — `[CHAINSCAN_URL]`
+**Demo Counter:** `0xdDEFa8AACE574f30B4f6db972Df4df11EC524961` —
+`https://chainscan-galileo.0g.ai/address/0xddefa8aace574f30b4f6db972df4df11ec524961`
 
-**Demo Token:** `[DEMO_TOKEN_ADDRESS]` — `[CHAINSCAN_URL]`
+**Demo Token:** `0x5f54D66a5dD8DcEb1a5eDcC638B31839810589bf` —
+`https://chainscan-galileo.0g.ai/address/0x5f54d66a5dd8dceb1a5edcc638b31839810589bf`
 
-Do not replace deployment/live placeholders until links and bytecode are independently checked.
+All three addresses above were independently checked for deployed bytecode and source verification.
+Live hosting/video placeholders remain intentionally blank until those external publishing actions
+are authorized.
 
 ## Short summary
 
@@ -130,25 +135,25 @@ Publishing this post is an external action and requires owner approval.
   eliminate that class of risk.
 - JSON persistence and a single process are demo architecture, not horizontal production HA.
 - Reports are public; private evidence/encryption is not implemented.
-- Paid Compute, Storage, testnet deployment, and mainnet proof require user-provided funded accounts,
-  credentials, and explicit broadcast authorization.
+- Galileo Compute, Storage, deployment, safe execution, block anchor, and tamper evidence are live
+  and recorded in `docs/evidence/galileo-live.json`. Mainnet remains undeployed and unauthorized.
 - ERC-8004 registration is not automated; ERC-7857 is deferred for the production-readiness reasons
   recorded in research.
 
 ## Final submission checklist
 
 - [x] Public repository URL is populated.
-- [ ] `pnpm verify` passes on public commit and CI is green.
-- [ ] README screenshot is from the same commit and mode is visible.
-- [ ] Galileo live Compute request receipt is captured without secrets.
-- [ ] Unique Storage report upload/download/root evidence is captured.
-- [ ] Contracts are deployed, source-verified, and deployment JSON is committed.
-- [ ] Safe action ChainScan link and final counter state are checked.
-- [ ] Dangerous action is anchored and execution refusal is demonstrated.
-- [ ] Tamper and replay failures are recorded.
+- [x] `pnpm verify` passes locally on the exact submission working tree.
+- [x] README screenshots were regenerated from this tree and visibly label sandbox mode.
+- [x] Galileo live Compute request receipt is captured without secrets.
+- [x] Unique Storage report upload/download/root evidence is captured.
+- [x] Contracts are deployed, source-verified, and deployment JSON is committed.
+- [x] Safe action ChainScan link and final counter state are checked.
+- [x] Dangerous action is anchored and execution refusal is demonstrated.
+- [x] Tamper and replay failures are recorded.
 - [ ] Live demo and demo video URLs work in a fresh browser.
-- [ ] No private key, API key, fabricated metric, or fake partner/audit claim exists.
-- [ ] Security disclaimer and known limitations remain visible.
-- [ ] Project fields meet platform length requirements.
-- [ ] X post contains `#0GBridge #BuildOn0G` and tags all three required accounts.
-- [ ] Owner explicitly approves repository push, deployment, submission, and social post.
+- [x] Repository secret scan finds no private key or API key; no fabricated metrics/claims exist.
+- [x] Security disclaimer and known limitations remain visible.
+- [x] Project fields meet the documented platform length requirements.
+- [x] X post contains `#0GBridge #BuildOn0G` and tags all three required accounts.
+- [ ] Owner explicitly approves hosted-demo/video publication, submission, and social post.

@@ -1,4 +1,14 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
+
+async function expectNoHorizontalOverflow(page: Page): Promise<void> {
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+      ),
+    )
+    .toBe(false);
+}
 
 test("landing page communicates the layered trust model", async ({ page }) => {
   await page.goto("/");
@@ -18,6 +28,7 @@ test("safe action produces a verifiable trace and rejects tampering", async ({
   await expect(page.getByText("Allowed", { exact: true })).toBeVisible({ timeout: 30_000 });
   await page.getByRole("link", { name: /Open public trace/ }).click();
   await expect(page.getByText("All evidence bindings verify")).toBeVisible();
+  await expectNoHorizontalOverflow(page);
   await expect(page.getByText(/sandbox mode/)).toBeVisible();
   const verifyButton = page.getByRole("button", { name: "Verify evidence now" });
   await expect(verifyButton).toBeVisible();
@@ -49,4 +60,5 @@ test("unlimited approval is blocked before execution", async ({ page }) => {
   await page.getByRole("link", { name: /Open public trace/ }).click();
   await expect(page.getByText("Unlimited ERC-20 approval")).toBeVisible();
   await expect(page.getByText("All evidence bindings verify")).toBeVisible();
+  await expectNoHorizontalOverflow(page);
 });

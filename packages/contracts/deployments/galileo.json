@@ -3,13 +3,37 @@
   "chainId": 16602,
   "rpc": "https://evmrpc-testnet.0g.ai",
   "explorer": "https://chainscan-galileo.0g.ai",
-  "deployedAt": null,
-  "deployer": null,
-  "authorizedVerifier": null,
+  "deployedAt": "2026-08-15T16:24:40.000Z",
+  "deployer": "0x46fc84CF367044534b30Cc24a06c245D4f9c0A8d",
+  "authorizedVerifier": "0x56F26619eBb861Fb937a1Ec505467339df349ae3",
   "contracts": {
-    "ActionProofGuard": null,
-    "DemoCounter": null,
-    "DemoToken": null,
-    "ReentrantTarget": null
+    "ActionProofGuard": {
+      "address": "0xAE7bB700296d25FC4fB2EC3dBCCda8348f3b7d5e",
+      "transactionHash": "0xa438a54901be143578a78a7528369034d13e097c3282ce6f98b53ed0702f1e99",
+      "blockNumber": 49588248,
+      "explorerUrl": "https://chainscan-galileo.0g.ai/address/0xae7bb700296d25fc4fb2ec3dbccda8348f3b7d5e",
+      "sourceVerified": true
+    },
+    "DemoCounter": {
+      "address": "0xdDEFa8AACE574f30B4f6db972Df4df11EC524961",
+      "transactionHash": "0x8e58c302b42066f0bb0ab116615110ca628069b3c2c2c006c0474d8d424d9f91",
+      "blockNumber": 49588249,
+      "explorerUrl": "https://chainscan-galileo.0g.ai/address/0xddefa8aace574f30b4f6db972df4df11ec524961",
+      "sourceVerified": true
+    },
+    "DemoToken": {
+      "address": "0x5f54D66a5dD8DcEb1a5eDcC638B31839810589bf",
+      "transactionHash": "0xe4df2af5bf8f3479cf3ff35363f6f4e872e6ae967f4293544c59fd463a8502bd",
+      "blockNumber": 49588249,
+      "explorerUrl": "https://chainscan-galileo.0g.ai/address/0x5f54d66a5dd8dceb1a5edcc638b31839810589bf",
+      "sourceVerified": true
+    },
+    "ReentrantTarget": {
+      "address": "0x23F165B30185F81E28E2d56790BE0005C1Bf1aa7",
+      "transactionHash": "0x8da8b2b9186fb6ede0a09f1829ca807f912cc0202fc9cf0295b41f19beec2d0a",
+      "blockNumber": 49588249,
+      "explorerUrl": "https://chainscan-galileo.0g.ai/address/0x23f165b30185f81e28e2d56790be0005c1bf1aa7",
+      "sourceVerified": true
+    }
   }
 }

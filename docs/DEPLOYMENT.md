@@ -83,6 +83,8 @@ explicitly approve the broadcast.
 1. Create fresh, low-value deployer/verifier/relayer accounts.
    `pnpm bootstrap:testnet` can create the four isolated keys in ignored local `.env` without
    printing secrets; it preserves any valid keys already present.
+   After a verified Galileo deployment, `pnpm bootstrap:testnet -- --enable-live` imports its public
+   addresses and enables only the Galileo live/write gates; the mainnet gate remains false.
 2. Fund the deployer on Galileo from `https://faucet.0g.ai`.
 3. Keep private keys in local environment variables. Inspect addresses with `cast wallet address`
    without printing private keys.
@@ -172,6 +174,23 @@ the configured model, and optional ERC-8004 wallet binding.
 ```bash
 LIVE_SMOKE_CONFIRM=SPEND_GALILEO_0G pnpm demo:live
 ```
+
+`pnpm demo:live` runs safe, dangerous, and tamper by default and persists traces under
+`API_DATA_DIR`. Append `-- safe` or `-- block` to spend only for that scenario plus its tamper check.
+The runner exits nonzero unless Compute is real Router mode, Storage and Chain are real 0G mode,
+retrieval/integrity passes, safe execution occurs, dangerous execution is absent, and tampering
+fails verification.
+
+### Current verified Galileo deployment
+
+- Guard: [`0xAE7b…7d5e`](https://chainscan-galileo.0g.ai/address/0xae7bb700296d25fc4fb2ec3dbccda8348f3b7d5e)
+- Counter: [`0xdDEF…4961`](https://chainscan-galileo.0g.ai/address/0xddefa8aace574f30b4f6db972df4df11ec524961)
+- Token: [`0x5f54…89bf`](https://chainscan-galileo.0g.ai/address/0x5f54d66a5dd8dceb1a5edcc638b31839810589bf)
+- Reentrancy fixture: [`0x23F1…aa7`](https://chainscan-galileo.0g.ai/address/0x23f165b30185f81e28e2d56790be0005c1bf1aa7)
+
+All four sources passed the ChainScan custom verifier with Solidity 0.8.24, Cancun, optimizer 200.
+Deployment transaction/block details are in `packages/contracts/deployments/galileo.json`; safe,
+blocked, Storage, Compute, and tamper receipts are in `docs/evidence/galileo-live.json`.
 
 For mainnet, the separate acknowledgement is `LIVE_SMOKE_CONFIRM=SPEND_MAINNET_0G`; do not set it
 without explicit owner authorization and a reviewed maximum spend.

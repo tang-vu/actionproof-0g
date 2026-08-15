@@ -31,6 +31,11 @@ pnpm demo
 It runs safe, dangerous, and tamper fixtures, prints their trace IDs and verdict evidence, and exits
 nonzero if any invariant is missing.
 
+For the verified Galileo production-adapter story, use `pnpm demo:live`. The reference evidence is
+checked in at `docs/evidence/galileo-live.json`; safe trace ID is
+`fdad8624-8cce-4b8a-8576-c724463469c7` and dangerous trace ID is
+`e68696d3-e399-49f9-ab70-3188fac06ab1` in the persisted operator data directory.
+
 ## Narration
 
 ### 0:00–0:25 — Problem and boundary

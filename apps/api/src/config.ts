@@ -69,6 +69,7 @@ const envSchema = z
     ACTIONPROOF_AGENT_ADDRESS: optionalAddress,
     OG_AGENTIC_ID: optionalUintString,
     DEMO_COUNTER_ADDRESS: optionalAddress,
+    DEMO_TOKEN_ADDRESS: optionalAddress,
     ENABLE_LIVE_WRITES: boolFromEnv.default(false),
     ALLOW_MAINNET_BROADCAST: boolFromEnv.default(false),
     LIVE_SMOKE_CONFIRM: z.string().optional(),

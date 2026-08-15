@@ -536,6 +536,11 @@ describe("production chain adapter wiring", () => {
     const rpcRequests: Array<{ method: string; params?: readonly unknown[] }> = [];
     const simulatedFunctions: string[] = [];
     const writtenFunctions: string[] = [];
+    let explorerPayload: unknown = {
+      status: "1",
+      message: "OK",
+      result: [{ SourceCode: "contract Verified {}", ABI: "[]" }],
+    };
     let transactionIndex = 0;
     const publicClient = {
       getChainId: async () => 16602,
@@ -568,12 +573,31 @@ describe("production chain adapter wiring", () => {
       verifierAccount: verifier,
       guardAddress,
       explorerBaseUrl: "https://chainscan.invalid/",
+      explorerApiUrl: "https://chainscan.invalid/open/api",
+      fetchFn: async (input) => {
+        const url = new URL(input instanceof Request ? input.url : input);
+        expect(url.searchParams.get("module")).toBe("contract");
+        expect(url.searchParams.get("action")).toBe("getsourcecode");
+        expect(url.searchParams.get("address")).toBe(target);
+        return new Response(JSON.stringify(explorerPayload), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      },
       clock: fixedClock,
     });
 
     const simulationResult = await adapter.simulateAction(action);
     expect(simulationResult.gasEstimate).toBe("176");
+    expect(simulationResult.targetVerification).toBe("verified");
     expect(rpcRequests[0]?.params?.[0]).toMatchObject({ from: guardAddress });
+
+    explorerPayload = { status: "0", result: "Contract source code not verified" };
+    expect((await adapter.simulateAction(action)).targetVerification).toBe("unverified");
+    explorerPayload = { status: "0", result: "Max rate limit reached" };
+    expect((await adapter.simulateAction(action)).targetVerification).toBe("unknown");
+    explorerPayload = { broken: true };
+    expect((await adapter.simulateAction(action)).targetVerification).toBe("unknown");
 
     const report = riskReport();
     const attestation = createAttestation({

@@ -63,17 +63,18 @@ This is one coherent security lifecycle, not three disconnected integration badg
 - minimal Foundry guard and extensive unit/fuzz security cases;
 - safe/block/tamper CLI and critical browser journey;
 - polished public verification console;
+- source-verified Galileo contracts and retained live Compute/Storage/Chain evidence;
 - deployment, threat model, research, CI, and submission package.
 
-External funded credentials and explicit broadcast approval are the remaining live-deployment gates.
+Galileo safe execution, unlimited-approval block, and tamper rejection are complete. Mainnet remains
+locked pending an independent audit, funded roles, and explicit broadcast authorization.
 
 ## 8. Defensible roadmap
 
-1. Galileo deployment and retained live receipts.
-2. Independent contract/application audit and KMS-backed threshold verifier.
-3. Richer state-diff tracing and protocol-specific policies.
-4. Durable queue/database and event indexer.
-5. Extend the implemented read-only ERC-8004 identity binding with separately approved registration
+1. Independent contract/application audit and KMS-backed threshold verifier.
+2. Richer state-diff tracing and protocol-specific policies.
+3. Durable queue/database and event indexer.
+4. Extend the implemented read-only ERC-8004 identity binding with separately approved registration
    and reputation evidence; keep ERC-7857 out until its production oracle path is proven.
 
 No token. No custody. No claim that AI guarantees safety.

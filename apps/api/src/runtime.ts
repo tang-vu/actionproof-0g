@@ -138,6 +138,8 @@ export function createLiveRuntime(config: AppConfig): Runtime {
     verifierAccount: verifier,
     guardAddress,
     explorerBaseUrl: explorerUrl,
+    explorerApiUrl: `${explorerUrl.replace(/\/$/u, "")}/open/api`,
+    sourceVerificationTimeoutMs: config.READINESS_TIMEOUT_MS,
   });
   const compute = new ZgComputeRouterAdapter({
     apiKey: requireLiveValue(config.OG_COMPUTE_API_KEY, "OG_COMPUTE_API_KEY"),

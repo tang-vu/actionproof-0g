@@ -1,0 +1,83 @@
+{
+  "schemaVersion": "1.0",
+  "network": "0G Galileo Testnet",
+  "chainId": 16602,
+  "capturedAt": "2026-08-15T16:49:25.095Z",
+  "contracts": {
+    "guard": "0xAE7bB700296d25FC4fB2EC3dBCCda8348f3b7d5e",
+    "counter": "0xdDEFa8AACE574f30B4f6db972Df4df11EC524961",
+    "token": "0x5f54D66a5dD8DcEb1a5eDcC638B31839810589bf",
+    "sourceVerified": true
+  },
+  "safe": {
+    "traceId": "fdad8624-8cce-4b8a-8576-c724463469c7",
+    "actionHash": "0xb8646ddf13e57bb3226f216aa308a658202e54bdea698009e28387547660682c",
+    "reportHash": "0xa0cd115609f2537dcf32ab10399cd2f7d1af1b6656f2bb30ef4d17d894e64368",
+    "verdict": "allow",
+    "riskScore": 0,
+    "compute": {
+      "model": "qwen2.5-omni",
+      "provider": "0xa48f01287233509FD694a22Bf840225062E67836",
+      "requestId": "1c72fff8-3a18-42e2-9089-64cd96fa9089"
+    },
+    "storage": {
+      "rootHash": "0x75dcd6a3405f672d61b5ff6b9f889d7cd50cf0b7786141e686f8825828c208cc",
+      "transactionHash": "0x13d2aa1352a4386882e053a491a16903838a7fa0e8ab1352d3930799bcf50d14",
+      "blockNumber": 49591104,
+      "sequence": "146933",
+      "explorerUrl": "https://storagescan-galileo.0g.ai/submission/146933",
+      "roundTripVerified": true
+    },
+    "anchor": {
+      "transactionHash": "0xdf92eeafe30634018a05106c05b437d514b713fae1fb893d05c569f0d5d5b3d8",
+      "blockNumber": 49591125,
+      "explorerUrl": "https://chainscan-galileo.0g.ai/tx/0xdf92eeafe30634018a05106c05b437d514b713fae1fb893d05c569f0d5d5b3d8"
+    },
+    "execution": {
+      "status": "executed",
+      "transactionHash": "0x0ac9679df0f9e260e0b0055983bf18552d7ae45dffd81ad16b2ae92fca153491",
+      "blockNumber": 49591148,
+      "explorerUrl": "https://chainscan-galileo.0g.ai/tx/0x0ac9679df0f9e260e0b0055983bf18552d7ae45dffd81ad16b2ae92fca153491"
+    },
+    "verificationValid": true
+  },
+  "dangerous": {
+    "traceId": "e68696d3-e399-49f9-ab70-3188fac06ab1",
+    "actionHash": "0xb14da5df004307d02cda5202e4d89f04b1bfcf18ac579f1325dd018c2a0d58d5",
+    "reportHash": "0x8ccdf17867d1c796ae64336af004c94a1f76d8f6006214126ba7101f84561bfc",
+    "verdict": "block",
+    "riskScore": 100,
+    "blockingRuleIds": ["UNLIMITED_ERC20_APPROVAL"],
+    "compute": {
+      "model": "qwen2.5-omni",
+      "provider": "0xa48f01287233509FD694a22Bf840225062E67836",
+      "requestId": "b8ffd745-9084-4fbb-896d-a87890a58160"
+    },
+    "storage": {
+      "rootHash": "0x4f7721ae48f204d28ed9ac786159e6f66da09b42aee5c42a8bac84024d2f480c",
+      "transactionHash": "0x9deb35495456acea2f6ee9a8e053d7010e2566c9369a4459e8a1fc2628c9aee5",
+      "blockNumber": 49591195,
+      "sequence": "146934",
+      "explorerUrl": "https://storagescan-galileo.0g.ai/submission/146934",
+      "roundTripVerified": true
+    },
+    "anchor": {
+      "transactionHash": "0x2ed9f81dd07e7a5dbc71d5ed271f90cdf5da5e0e3e35e34462349f7c4b2627c0",
+      "blockNumber": 49591209,
+      "explorerUrl": "https://chainscan-galileo.0g.ai/tx/0x2ed9f81dd07e7a5dbc71d5ed271f90cdf5da5e0e3e35e34462349f7c4b2627c0"
+    },
+    "execution": { "status": "blocked", "transactionHash": null },
+    "verificationValid": true
+  },
+  "tamper": {
+    "sourceTraceId": "fdad8624-8cce-4b8a-8576-c724463469c7",
+    "mutation": "calldata",
+    "verificationValid": false,
+    "failedChecks": ["action-hash", "attestation-binding"]
+  },
+  "postState": {
+    "counterNumber": "2",
+    "nextNonce": "5"
+  },
+  "mainnetBroadcast": false
+}

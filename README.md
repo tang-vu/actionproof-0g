@@ -93,13 +93,14 @@ and policy semantics.
   propagation;
 - event-based public audit history.
 
-| Network | Chain ID | Guard        | Demo Counter | Demo Token   | Status                                  |
-| ------- | -------: | ------------ | ------------ | ------------ | --------------------------------------- |
-| Galileo |  `16602` | Not deployed | Not deployed | Not deployed | Awaiting funded account + authorization |
-| Mainnet |  `16661` | Not deployed | Not deployed | Not deployed | Broadcast disabled                      |
+| Network | Chain ID | Guard                                                                                               | Demo Counter                                                                                        | Demo Token                                                                                          | Status                       |
+| ------- | -------: | --------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | ---------------------------- |
+| Galileo |  `16602` | [`0xAE7b…7d5e`](https://chainscan-galileo.0g.ai/address/0xae7bb700296d25fc4fb2ec3dbccda8348f3b7d5e) | [`0xdDEF…4961`](https://chainscan-galileo.0g.ai/address/0xddefa8aace574f30b4f6db972df4df11ec524961) | [`0x5f54…89bf`](https://chainscan-galileo.0g.ai/address/0x5f54d66a5dd8dceb1a5edcc638b31839810589bf) | Deployed and source-verified |
+| Mainnet |  `16661` | Not deployed                                                                                        | Not deployed                                                                                        | Not deployed                                                                                        | Broadcast disabled           |
 
-Verified addresses and ChainScan links will appear only after a real reviewed broadcast. The complete
-workflow is ready in [DEPLOYMENT.md](docs/DEPLOYMENT.md); this repository never fabricates them.
+The Galileo contracts were broadcast on 2026-08-15 and independently source-verified. Exact
+deployment transactions, blocks, compiler settings, and all four fixture addresses are committed in
+[`galileo.json`](packages/contracts/deployments/galileo.json).
 
 ### 0G Compute
 
@@ -112,6 +113,9 @@ to a fake model.
 The current Direct SDK alternative (`@0gfoundation/0g-compute-ts-sdk@0.9.0`) and upstream drift are
 recorded in [RESEARCH.md](docs/RESEARCH.md).
 
+The live Galileo proof used `qwen2.5-omni`, provider
+`0xa48f01287233509FD694a22Bf840225062E67836`, and retains Router request IDs in the signed reports.
+
 ### 0G Storage
 
 The production adapter pins `@0gfoundation/0g-storage-ts-sdk@1.2.11` and `ethers@6.13.1`. It uploads
@@ -121,6 +125,21 @@ That final check is mandatory because the current high-level downloader proof op
 itself sufficient evidence of proof validation. Receipts preserve the Storage submission sequence
 and expose its direct StorageScan link; finalized deduplication is valid even when no new transaction
 hash is returned.
+
+## Verified Galileo evidence
+
+The checked-in [live evidence record](docs/evidence/galileo-live.json) was produced by the real
+production adapters on 2026-08-15:
+
+- **Safe:** [Storage sequence 146933](https://storagescan-galileo.0g.ai/submission/146933),
+  [anchor](https://chainscan-galileo.0g.ai/tx/0xdf92eeafe30634018a05106c05b437d514b713fae1fb893d05c569f0d5d5b3d8),
+  and [guarded execution](https://chainscan-galileo.0g.ai/tx/0x0ac9679df0f9e260e0b0055983bf18552d7ae45dffd81ad16b2ae92fca153491).
+- **Dangerous:** unlimited approval produced risk `100`, rule `UNLIMITED_ERC20_APPROVAL`,
+  [Storage sequence 146934](https://storagescan-galileo.0g.ai/submission/146934), and an
+  [audit-only block anchor](https://chainscan-galileo.0g.ai/tx/0x2ed9f81dd07e7a5dbc71d5ed271f90cdf5da5e0e3e35e34462349f7c4b2627c0)
+  with no execution transaction.
+- **Tamper:** changing the safe calldata made both the action-hash and attestation-binding checks
+  fail. The final counter state was `2`; the evidence run advanced the nonce lane to `5`.
 
 ### Agentic ID
 
@@ -182,6 +201,18 @@ pnpm demo
 For the browser story, run `pnpm dev`, open **Analyze**, and follow
 [the three-minute demo script](docs/DEMO_SCRIPT.md).
 
+An authorized, funded Galileo operator can reproduce the paid production-adapter flow with:
+
+```bash
+pnpm readiness:live             # no paid inference/write
+pnpm demo:live                  # safe + dangerous + tamper; spends testnet 0G
+pnpm demo:live -- safe          # one paid safe scenario + tamper
+pnpm demo:live -- block         # one paid block scenario + tamper
+```
+
+Live traces persist under the ignored `API_DATA_DIR`; `pnpm dev` serves them through the same public
+verification UI.
+
 ## Verification
 
 ```bash
@@ -205,6 +236,7 @@ pnpm build
 pnpm test:e2e
 pnpm audit:prod
 pnpm probe:0g        # public Chain/Compute-catalog/Storage-indexer probes; no keys or spend
+pnpm readiness:live  # configured model/indexer/guard/verifier checks; no paid inference or write
 pnpm test:live       # opt-in configuration/readiness checks; no implicit spending
 ```
 
@@ -253,11 +285,10 @@ Please report vulnerabilities privately as described in [SECURITY.md](SECURITY.m
 
 ## Roadmap
 
-1. Deploy/verify on Galileo and retain real Compute, Storage, anchor, execution, and tamper evidence.
-2. Independent contract/application audit and KMS-backed threshold verification.
-3. Richer trace/state-diff simulation and protocol-aware policy modules.
-4. Durable queue/database, guard event indexer, monitoring, and redundant RPCs.
-5. Optional ERC-8004 reputation evidence; ERC-7857 only after its production oracle path is proven.
+1. Independent contract/application audit and KMS-backed threshold verification.
+2. Richer trace/state-diff simulation and protocol-aware policy modules.
+3. Durable queue/database, guard event indexer, monitoring, and redundant RPCs.
+4. Optional ERC-8004 reputation evidence; ERC-7857 only after its production oracle path is proven.
 
 No token, NFT sale, DAO, marketplace, custody feature, or unrelated chat product is planned.
 

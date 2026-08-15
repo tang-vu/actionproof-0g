@@ -10,7 +10,9 @@ import type { ActionRequest } from "@actionproof/core";
 import { api } from "../lib/api";
 import type { ActionTrace, AnalysisJob, JobStep } from "../lib/types";
 
-const DEMO_AGENT = getAddress("0xa17e000000000000000000000000000000000001");
+const DEMO_AGENT = getAddress(
+  process.env.NEXT_PUBLIC_ACTIONPROOF_AGENT_ADDRESS ?? "0xa17e000000000000000000000000000000000001",
+);
 const DEMO_COUNTER = getAddress(
   process.env.NEXT_PUBLIC_DEMO_COUNTER_ADDRESS ?? "0xc001000000000000000000000000000000000001",
 );
@@ -103,7 +105,7 @@ export function AnalysisConsole({ initialIssuedAt }: { initialIssuedAt: number }
     setSubmitError(null);
     setNonceLoading(true);
     void api
-      .getNonce(requester)
+      .getNonce(requester, DEMO_AGENT)
       .then(({ nonce }) => setAction((current) => ({ ...current, nonce })))
       .catch(() => {
         // Keep the visible placeholder nonce; submission will fail closed if it is stale.

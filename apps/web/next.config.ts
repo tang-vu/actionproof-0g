@@ -1,4 +1,10 @@
+import { existsSync } from "node:fs";
+import path from "node:path";
+
 import type { NextConfig } from "next";
+
+const workspaceEnv = path.resolve(import.meta.dirname, "../../.env");
+if (existsSync(workspaceEnv)) process.loadEnvFile(workspaceEnv);
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,

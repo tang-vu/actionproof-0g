@@ -1,17 +1,19 @@
 # Judging evidence map
 
 This document lets a reviewer verify each judging criterion without relying on marketing claims.
-Live addresses/receipts remain blank until a funded, explicitly authorized deployment occurs.
+Galileo addresses and receipts are real and collected in `docs/evidence/galileo-live.json`; mainnet
+and hosted-demo claims remain blank unless separately authorized.
 
 ## Progress and momentum — 40%
 
-| Evidence                                      | Where to verify                                                        | What it demonstrates                                                            |
-| --------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| Working monorepo and one-command verification | `package.json`, `pnpm-lock.yaml`, `.github/workflows/ci.yml`           | Reproducible delivery rather than disconnected snippets                         |
-| Timestamped decisions and milestones          | `docs/RESEARCH.md`, `docs/BUILD_LOG.md`, Git history                   | Research-to-implementation momentum and honest blockers                         |
-| Complete product journey                      | `apps/web`, `apps/api`, `docs/DEMO_SCRIPT.md`                          | Proposal through analysis, storage, anchor, execution/refusal, and public trace |
-| Safe / dangerous / tamper fixtures            | API demo CLI, core policy tests, contract tests, Playwright suite      | Three dramatic scenarios are repeatable in CLI and browser                      |
-| Deployment-ready records and gates            | `packages/contracts/deployments`, `docs/DEPLOYMENT.md`, `.env.example` | Galileo/mainnet work can proceed without redesign                               |
+| Evidence                                      | Where to verify                                                        | What it demonstrates                                                                 |
+| --------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Working monorepo and one-command verification | `package.json`, `pnpm-lock.yaml`, `.github/workflows/ci.yml`           | Reproducible delivery rather than disconnected snippets                              |
+| Timestamped decisions and milestones          | `docs/RESEARCH.md`, `docs/BUILD_LOG.md`, Git history                   | Research-to-implementation momentum and honest blockers                              |
+| Complete product journey                      | `apps/web`, `apps/api`, `docs/DEMO_SCRIPT.md`                          | Proposal through analysis, storage, anchor, execution/refusal, and public trace      |
+| Safe / dangerous / tamper fixtures            | API demo CLI, core policy tests, contract tests, Playwright suite      | Three dramatic scenarios are repeatable in CLI and browser                           |
+| Deployment-ready records and gates            | `packages/contracts/deployments`, `docs/DEPLOYMENT.md`, `.env.example` | Galileo/mainnet work can proceed without redesign                                    |
+| Real Galileo safe/block/tamper proof          | `docs/evidence/galileo-live.json`, ChainScan and StorageScan links     | Production adapters completed the full story; identifiers are independently openable |
 
 Fast review:
 
@@ -46,7 +48,8 @@ Then open `http://127.0.0.1:3000`.
 - JSON-object mode is followed by strict runtime validation; invalid content/trace metadata,
   oversize, timeout, and transport error fail closed with no mock fallback.
 - Model/provider/request/billing metadata is carried into the canonical report.
-- Adapter tests use only injected transports. A paid live smoke requires a funded Router key.
+- Adapter tests use only injected transports. The live proof used `qwen2.5-omni` and retains two
+  real request/provider IDs without exposing the Router key.
 
 ### 0G Storage
 
@@ -55,6 +58,9 @@ Then open `http://127.0.0.1:3000`.
   recomputes the Merkle root.
 - This extra verification addresses the current documented/published high-level proof-check gap.
 - The exact root plus canonical report hash are both signed and anchored.
+- Live roots `0x75dcd6…208cc` and `0x4f7721…f480c` are retrievable through Storage sequences
+  [146933](https://storagescan-galileo.0g.ai/submission/146933) and
+  [146934](https://storagescan-galileo.0g.ai/submission/146934).
 
 ### Agentic ID
 
@@ -93,19 +99,16 @@ Architecture details and diagrams are in `docs/ARCHITECTURE.md` and the `/archit
 | Real integration status vs unavailable/sandbox      | Landing/analyze runtime status panel                                |
 | Public independent evidence                         | `/trace/:id` with hashes, receipts, checks, report, and tamper test |
 
-No users, partners, audits, deployments, transaction IDs, or success metrics are invented. The public
-repository URL is populated; live demo and deployment URLs remain placeholders until authorized work
-creates verifiable evidence.
+No users, partners, audits, or success metrics are invented. The repository and Galileo evidence are
+populated; hosted live-demo/video URLs remain placeholders pending external publishing authorization.
 
 ## Current external blockers
 
 These are not unfinished local engineering tasks:
 
-1. a funded Galileo deployer/storage/relayer account;
-2. a funded 0G Compute Router testnet balance and inference-only key;
-3. explicit authorization to broadcast Galileo or mainnet transactions;
-4. hosting accounts/domain if a public instance is desired;
-5. owner authorization to push/publish/social-post.
+1. hosting accounts/domain if a public instance is desired;
+2. a reviewed, audited mainnet release plus funded mainnet roles and explicit broadcast approval;
+3. owner authorization to publish the demo video and mandatory social post.
 
-Until they are supplied, judges should evaluate the deterministic sandbox, tests, live adapter code,
-dry-run/read-only probes, and deployment readiness—not nonexistent Explorer links.
+The repository owner authorized Galileo writes and supplied funded testnet roles. Mainnet remains
+locked; none of the completed Galileo work implies mainnet authorization.

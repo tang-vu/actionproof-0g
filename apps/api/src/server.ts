@@ -1,3 +1,5 @@
+import "./load-local-env.js";
+
 import { buildApp } from "./app.js";
 import { parseEnv } from "./config.js";
 

@@ -41,8 +41,13 @@ export const api = {
   getIntegrations(): Promise<IntegrationStatus> {
     return request("/v1/integrations");
   },
-  getNonce(requester: string): Promise<{ requester: string; nonce: string }> {
-    return request(`/v1/nonces/${encodeURIComponent(requester)}`);
+  getNonce(
+    requester: string,
+    agent: string,
+  ): Promise<{ agent: string; requester: string; nonce: string }> {
+    return request(
+      `/v1/nonces/${encodeURIComponent(requester)}?agent=${encodeURIComponent(agent)}`,
+    );
   },
   verifyTrace(id: string): Promise<ActionTrace["verification"]> {
     return request(`/v1/traces/${encodeURIComponent(id)}/verify`, {

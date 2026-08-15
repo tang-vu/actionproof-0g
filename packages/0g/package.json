@@ -14,16 +14,19 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run src/adapters.test.ts --coverage.enabled=false"
+    "test": "vitest run src/adapters.test.ts --coverage.enabled=false",
+    "inspect:storage": "tsx src/inspect-storage.ts"
   },
   "dependencies": {
     "@0gfoundation/0g-storage-ts-sdk": "1.2.11",
     "@actionproof/core": "workspace:*",
     "ethers": "6.13.1",
     "openai": "7.4.0",
-    "viem": "2.55.13"
+    "viem": "2.55.13",
+    "zod": "4.4.3"
   },
   "devDependencies": {
+    "tsx": "4.23.12",
     "vitest": "4.1.10"
   }
 }

@@ -64,11 +64,33 @@ authoritative timestamped change log; no history or timestamps are fabricated.
   and Mainnet (`16661`) RPCs. Confirmed a simulated non-dry mainnet invocation fails with
   `MainnetBroadcastNotAuthorized` unless its independent authorization gate is set.
 
+## 2026-08-15/16 — Verified Galileo production-adapter proof
+
+- Generated four role-separated local testnet identities without printing keys, funded them, and
+  kept all secrets in the ignored `.env`. Mainnet broadcast remained disabled.
+- Dry-ran, broadcast, receipt-checked, and source-verified `ActionProofGuard`, `DemoCounter`,
+  `DemoToken`, and `ReentrantTarget` on Galileo. Committed exact addresses, transactions, blocks,
+  compiler settings, and Explorer links.
+- Exercised fail-closed behavior before success: malformed Compute JSON produced a block anchor; a
+  missing source-provenance signal produced review and no execution. Neither path was mislabeled as
+  a safe success.
+- Tightened the real `qwen2.5-omni` structured-output prompt without application-side repair, then
+  passed an isolated paid Compute request with Router request/provider/billing metadata.
+- Added validated ChainScan `/open/api` source-provenance lookup. Explorer timeout or malformed data
+  still degrades to `unknown`; it never invents verification.
+- Completed and persisted the full live story: safe Storage upload/round-trip/anchor/execution,
+  unlimited-approval Storage upload/block anchor/no execution, and calldata-tamper rejection.
+- Independently checked all five final transaction receipts, counter state `2`, nonce `5`, both
+  Storage roots, seven trace checks, and public Explorer links. Sanitized evidence is committed in
+  `docs/evidence/galileo-live.json`.
+- Rendered the live traces on desktop and Pixel 7. Fixed a mobile grid min-content overflow and a
+  UI/API agent nonce-lane mismatch, then added browser regression assertions for both.
+
 ## Validation record
 
-`pnpm verify` completed successfully on 2026-08-13 in 115.2 seconds after final readiness hardening.
-Paid 0G Compute, funded Storage upload, Galileo contract deployment, and mainnet broadcast remain
-accurately listed as external credential/funding/authorization blockers until performed.
+The latest `pnpm verify` completed successfully on 2026-08-16 in 112.7 seconds against the same
+working tree as the live-evidence documentation. Mainnet deployment remains deliberately blocked by
+funding, review, audit, and explicit authorization requirements.
 
 | Check                     | Result                                                                       |
 | ------------------------- | ---------------------------------------------------------------------------- |
@@ -80,9 +102,9 @@ accurately listed as external credential/funding/authorization blockers until pe
 | Foundry unit/fuzz tests   | 31 passed; four fuzz properties ran 512 cases each                           |
 | Production builds         | Contracts, Core, 0G adapters, API, and Next.js passed; guard runtime 6,127 B |
 | Playwright desktop/mobile | 6 passed across Chromium desktop and Pixel 7                                 |
-| Secret scan               | 100 repository files checked; passed                                         |
+| Secret scan               | 106 repository files checked; passed                                         |
 | Production audit          | No known vulnerabilities found                                               |
 | Sandbox smoke             | Safe executed; unlimited approval blocked; tamper verification rejected      |
-| RPC deployment dry-runs   | Galileo and Mainnet both passed; no broadcast                                |
+| Deployment evidence       | Galileo deployed/source-verified; Mainnet dry-run passed, broadcast disabled |
 | Public 0G probes          | Chain, Compute catalog, and Storage indexer passed on Galileo and Mainnet    |
-| Live paid 0G smoke        | Not run — requires funded user credentials and explicit write approval       |
+| Live paid 0G proof        | Safe executed; unlimited approval blocked; calldata tamper rejected          |

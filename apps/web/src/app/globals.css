@@ -1457,13 +1457,17 @@ code {
 
 .trace-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 16px;
 }
 
 .trace-grid.lower {
-  grid-template-columns: 1.25fr 0.75fr;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.75fr);
   margin-top: 16px;
+}
+
+.trace-grid > * {
+  min-width: 0;
 }
 
 .hash-row {
@@ -1486,9 +1490,13 @@ code {
 
 .hash-row code,
 .hash-row a {
+  max-width: 100%;
+  overflow: hidden;
   justify-self: end;
   color: var(--cyan);
   font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .checks-panel li {
@@ -1529,6 +1537,7 @@ code {
   margin: 1px 0;
   color: var(--muted-2);
   font-size: 9px;
+  overflow-wrap: anywhere;
 }
 
 .layer-block {
@@ -2028,7 +2037,7 @@ code {
   .console-grid,
   .trace-grid,
   .trace-grid.lower {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .status-section {
