@@ -81,6 +81,8 @@ explicitly approve the broadcast.
 ## Contract deployment
 
 1. Create fresh, low-value deployer/verifier/relayer accounts.
+   `pnpm bootstrap:testnet` can create the four isolated keys in ignored local `.env` without
+   printing secrets; it preserves any valid keys already present.
 2. Fund the deployer on Galileo from `https://faucet.0g.ai`.
 3. Keep private keys in local environment variables. Inspect addresses with `cast wallet address`
    without printing private keys.

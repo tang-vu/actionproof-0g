@@ -16,6 +16,7 @@
     "build:libs": "pnpm --filter @actionproof/core build && pnpm --filter @actionproof/0g build",
     "demo": "pnpm build:libs && pnpm --filter @actionproof/api demo:sandbox",
     "demo:live": "pnpm build:libs && pnpm --filter @actionproof/api demo:live",
+    "bootstrap:testnet": "pnpm --filter @actionproof/api bootstrap:testnet",
     "probe:0g": "pnpm build:libs && tsx scripts/probe-0g.ts",
     "format": "prettier --write . && pnpm --filter @actionproof/contracts format",
     "format:check": "prettier --check . && pnpm --filter @actionproof/contracts format:check",

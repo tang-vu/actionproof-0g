@@ -154,6 +154,15 @@ Copy-Item .env.example .env
 pnpm dev
 ```
 
+For isolated Galileo testnet identities, generate or preserve the four server keys directly in the
+ignored local `.env` without printing private keys:
+
+```powershell
+pnpm bootstrap:testnet
+```
+
+This does not request faucet funds, create a Compute account, enable writes, or broadcast anything.
+
 The web app runs on port `3000`; the API runs on `8787`.
 
 ## Reproducible demo
