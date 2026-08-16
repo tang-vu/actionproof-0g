@@ -1,8 +1,9 @@
 # Judging evidence map
 
 This document lets a reviewer verify each judging criterion without relying on marketing claims.
-Galileo addresses and receipts are real and collected in `docs/evidence/galileo-live.json`; mainnet
-and hosted-demo claims remain blank unless separately authorized.
+Galileo addresses and receipts are real and collected in `docs/evidence/galileo-live.json`; the
+read-only public evidence console is live at `https://actionproof.tangvu.dev`; mainnet remains
+undeployed and unauthorized.
 
 ## Progress and momentum — 40%
 
@@ -14,6 +15,7 @@ and hosted-demo claims remain blank unless separately authorized.
 | Safe / dangerous / tamper fixtures            | API demo CLI, core policy tests, contract tests, Playwright suite      | Three dramatic scenarios are repeatable in CLI and browser                           |
 | Deployment-ready records and gates            | `packages/contracts/deployments`, `docs/DEPLOYMENT.md`, `.env.example` | Galileo/mainnet work can proceed without redesign                                    |
 | Real Galileo safe/block/tamper proof          | `docs/evidence/galileo-live.json`, ChainScan and StorageScan links     | Production adapters completed the full story; identifiers are independently openable |
+| Public evidence deployment                    | `https://actionproof.tangvu.dev`, `ecosystem.config.cjs`               | HTTPS judge access, live probes, real traces, and an explicit anonymous-write gate   |
 
 Fast review:
 
@@ -25,7 +27,8 @@ pnpm probe:0g
 pnpm dev
 ```
 
-Then open `http://127.0.0.1:3000`.
+Then open `http://127.0.0.1:3000`, or inspect the read-only live evidence deployment at
+`https://actionproof.tangvu.dev`.
 
 ## Depth and quality of 0G integration — 30%
 
@@ -98,6 +101,7 @@ Architecture details and diagrams are in `docs/ARCHITECTURE.md` and the `/archit
 | Local/live deployment and recovery                  | `docs/DEPLOYMENT.md`                                                |
 | Real integration status vs unavailable/sandbox      | Landing/analyze runtime status panel                                |
 | Public independent evidence                         | `/trace/:id` with hashes, receipts, checks, report, and tamper test |
+| Public HTTPS judge build                            | `https://actionproof.tangvu.dev`                                    |
 
 No users, partners, audits, or success metrics are invented. The repository and Galileo evidence are
 populated; hosted live-demo/video URLs remain placeholders pending external publishing authorization.

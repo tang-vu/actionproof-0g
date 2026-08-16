@@ -94,8 +94,16 @@ export function AnalysisConsole({ initialIssuedAt }: { initialIssuedAt: number }
   const [trace, setTrace] = useState<ActionTrace | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [nonceLoading, setNonceLoading] = useState(false);
+  const [readOnly, setReadOnly] = useState(false);
 
   const requester = account.address ?? DEMO_AGENT;
+
+  useEffect(() => {
+    void api
+      .getIntegrations()
+      .then((status) => setReadOnly(status.mode === "live" && !status.writesEnabled))
+      .catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     const next = scenarioAction(scenario, requester);
@@ -224,16 +232,30 @@ export function AnalysisConsole({ initialIssuedAt }: { initialIssuedAt: number }
         <button
           className="primary-action"
           type="button"
-          disabled={Boolean(busy) || nonceLoading}
+          disabled={Boolean(busy) || nonceLoading || readOnly}
           onClick={submit}
         >
-          {nonceLoading
-            ? "Reading guard nonce…"
-            : busy
-              ? "Analyzing exact action…"
-              : "Analyze & attest"}
+          {readOnly
+            ? "Read-only hosted demo"
+            : nonceLoading
+              ? "Reading guard nonce…"
+              : busy
+                ? "Analyzing exact action…"
+                : "Analyze & attest"}
           <span aria-hidden="true">→</span>
         </button>
+        {readOnly && (
+          <div className="callout neutral">
+            <span className="callout-icon">i</span>
+            <div>
+              <strong>Public evidence mode</strong>
+              <p>
+                Paid writes are disabled to protect server-held testnet balances.{" "}
+                <Link href="/history">Inspect the real Galileo safe and blocked traces</Link>.
+              </p>
+            </div>
+          </div>
+        )}
         {submitError && <div className="inline-error prominent">{submitError}</div>}
       </section>
 

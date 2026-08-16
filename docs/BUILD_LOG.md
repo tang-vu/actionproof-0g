@@ -86,11 +86,24 @@ authoritative timestamped change log; no history or timestamps are fabricated.
 - Rendered the live traces on desktop and Pixel 7. Fixed a mobile grid min-content overflow and a
   UI/API agent nonce-lane mismatch, then added browser regression assertions for both.
 
+## 2026-08-16 — Public evidence deployment
+
+- Created a dedicated `actionproof-0g` Cloudflare Tunnel and routed
+  `https://actionproof.tangvu.dev` to isolated loopback-only API and Next.js production origins.
+- Added reproducible PM2 hosting configuration, a Cloudflare ingress template, host build/status
+  commands, and an environment configurator that never prints secrets.
+- Published the two persisted real Galileo traces through History and public Trace pages; live Chain,
+  Compute catalog, and Storage node-selection probes remain visible.
+- Disabled anonymous paid writes and mainnet broadcast in the hosted configuration. Added a
+  synchronous 503 API gate and UI read-only state so public traffic cannot create jobs or spend
+  funded server balances.
+- Added CSP, HSTS, ordered tunnel path validation, DNS/HTTPS/CORS checks, and PM2 reboot persistence.
+
 ## Validation record
 
-The latest `pnpm verify` completed successfully on 2026-08-16 in 112.7 seconds against the same
-working tree as the live-evidence documentation. Mainnet deployment remains deliberately blocked by
-funding, review, audit, and explicit authorization requirements.
+The latest `pnpm verify` completed successfully on 2026-08-16 in 119.7 seconds against the hosted
+evidence working tree. Mainnet deployment remains deliberately blocked by funding, review, audit,
+and explicit authorization requirements.
 
 | Check                     | Result                                                                       |
 | ------------------------- | ---------------------------------------------------------------------------- |
@@ -98,11 +111,11 @@ funding, review, audit, and explicit authorization requirements.
 | ESLint                    | Passed with zero warnings                                                    |
 | TypeScript                | Strict checks passed for Core, 0G adapters, API, and Web                     |
 | Core tests                | 10 passed                                                                    |
-| Adapter/API tests         | 17 adapter + 7 API tests passed                                              |
+| Adapter/API tests         | 17 adapter + 8 API tests passed                                              |
 | Foundry unit/fuzz tests   | 31 passed; four fuzz properties ran 512 cases each                           |
 | Production builds         | Contracts, Core, 0G adapters, API, and Next.js passed; guard runtime 6,127 B |
 | Playwright desktop/mobile | 6 passed across Chromium desktop and Pixel 7                                 |
-| Secret scan               | 106 repository files checked; passed                                         |
+| Secret scan               | 109 repository files checked; passed                                         |
 | Production audit          | No known vulnerabilities found                                               |
 | Sandbox smoke             | Safe executed; unlimited approval blocked; tamper verification rejected      |
 | Deployment evidence       | Galileo deployed/source-verified; Mainnet dry-run passed, broadcast disabled |

@@ -13,7 +13,7 @@
 
 **Repository:** `https://github.com/tang-vu/actionproof-0g`
 
-**Live demo:** `[LIVE_DEMO_URL]`
+**Live demo:** `https://actionproof.tangvu.dev`
 
 **Demo video:** `[DEMO_VIDEO_URL]`
 
@@ -27,8 +27,8 @@
 `https://chainscan-galileo.0g.ai/address/0x5f54d66a5dd8dceb1a5edcc638b31839810589bf`
 
 All three addresses above were independently checked for deployed bytecode and source verification.
-Live hosting/video placeholders remain intentionally blank until those external publishing actions
-are authorized.
+The live demo is published in read-only evidence mode; the video placeholder remains blank until
+that separate publishing action is authorized.
 
 ## Short summary
 
@@ -135,6 +135,8 @@ Publishing this post is an external action and requires owner approval.
   eliminate that class of risk.
 - JSON persistence and a single process are demo architecture, not horizontal production HA.
 - Reports are public; private evidence/encryption is not implemented.
+- The public host disables anonymous paid writes; it exposes live integration readiness and the real
+  safe/block traces. A supervised operator enables paid Galileo writes only for a demo window.
 - Galileo Compute, Storage, deployment, safe execution, block anchor, and tamper evidence are live
   and recorded in `docs/evidence/galileo-live.json`. Mainnet remains undeployed and unauthorized.
 - ERC-8004 registration is not automated; ERC-7857 is deferred for the production-readiness reasons
@@ -151,9 +153,10 @@ Publishing this post is an external action and requires owner approval.
 - [x] Safe action ChainScan link and final counter state are checked.
 - [x] Dangerous action is anchored and execution refusal is demonstrated.
 - [x] Tamper and replay failures are recorded.
-- [ ] Live demo and demo video URLs work in a fresh browser.
+- [x] Live demo URL works in a fresh browser over HTTPS.
+- [ ] Demo video URL is recorded and published.
 - [x] Repository secret scan finds no private key or API key; no fabricated metrics/claims exist.
 - [x] Security disclaimer and known limitations remain visible.
 - [x] Project fields meet the documented platform length requirements.
 - [x] X post contains `#0GBridge #BuildOn0G` and tags all three required accounts.
-- [ ] Owner explicitly approves hosted-demo/video publication, submission, and social post.
+- [ ] Owner explicitly approves video publication, submission, and social post.

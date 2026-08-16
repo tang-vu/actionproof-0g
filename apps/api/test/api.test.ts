@@ -360,6 +360,37 @@ describe("ActionProof API sandbox pipeline", () => {
     expect(explicitlyAllowed.liveWriteEnabled).toBe(true);
   });
 
+  it("rejects public live submissions synchronously when writes are disabled", async () => {
+    const parsed = parseEnv({
+      ACTIONPROOF_MODE: "live",
+      NODE_ENV: "test",
+      OG_NETWORK: "galileo",
+      OG_CHAIN_ID: "16602",
+      OG_RPC_URL: "https://rpc.example.test",
+      OG_EXPLORER_URL: "https://chainscan.example.test",
+      OG_STORAGE_INDEXER_URL: "https://indexer.example.test",
+      OG_STORAGE_EXPLORER_URL: "https://storage.example.test",
+      OG_STORAGE_PRIVATE_KEY: `0x${"11".repeat(32)}`,
+      OG_COMPUTE_BASE_URL: "https://compute.example.test",
+      OG_COMPUTE_API_KEY: "test-only-key",
+      OG_COMPUTE_MODEL: "test-only-model",
+      VERIFIER_PRIVATE_KEY: `0x${"22".repeat(32)}`,
+      RELAYER_PRIVATE_KEY: `0x${"33".repeat(32)}`,
+      ACTIONPROOF_GUARD_ADDRESS: COUNTER,
+      ENABLE_LIVE_WRITES: "false",
+    });
+    const sandbox = createSandboxRuntime(parsed);
+    const app = await createApp({ ...sandbox, mode: "live" }, parsed);
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/jobs",
+      payload: { action: action({ nonce: "0" }), execute: true },
+    });
+
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toMatchObject({ error: { code: "LIVE_WRITES_DISABLED" } });
+  });
+
   it("persists completed jobs and traces across store instances", async () => {
     const directory = await mkdtemp(path.join(tmpdir(), "actionproof-api-test-"));
     temporaryDirectories.push(directory);

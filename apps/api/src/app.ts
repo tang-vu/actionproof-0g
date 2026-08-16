@@ -239,6 +239,13 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   });
 
   app.post("/v1/jobs", async (request, reply) => {
+    if (runtime.mode === "live" && !config.liveWriteEnabled) {
+      throw new ApiError(
+        503,
+        "LIVE_WRITES_DISABLED",
+        "This public deployment is read-only; live analysis requires an operator to enable the network safety gate",
+      );
+    }
     const body = createJobSchema.parse(request.body);
     const job = await orchestrator.createJob(body);
     return reply.code(202).send(job);

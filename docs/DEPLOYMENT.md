@@ -15,6 +15,41 @@ Git, or in the hosting provider's encrypted secret manager.
 0G supports Foundry and Cancun. Solidity 0.8.24 is used because it is the first stock compiler that
 accepts the Cancun target; the settings must match during explorer verification.
 
+## Current public judge deployment
+
+- URL: `https://actionproof.tangvu.dev`
+- Origin: this Windows host, bound only to `127.0.0.1:3020` (Next.js) and `127.0.0.1:8787` (API)
+- Edge: dedicated named Cloudflare Tunnel `actionproof-0g`; no router port is opened
+- Supervisor: PM2 apps `actionproof-web`, `actionproof-api`, and `actionproof-tunnel`, saved for the
+  existing `PM2 Resurrect` startup task
+- Safety posture: live Galileo reads and existing live traces are public; anonymous paid writes and
+  all mainnet broadcasts are disabled
+
+The public hostname routes `/v1/*`, `/healthz`, and `/readyz` to the API; all other paths go to
+Next.js. The ignored `.actionproof/cloudflare.yml`, `.env`, tunnel credential JSON, PM2 logs, and
+trace database are local operational state and must never be committed.
+
+Reproduce the Windows host configuration after provisioning a named tunnel and copying
+`deploy/cloudflare/config.example.yml` to ignored `.actionproof/cloudflare.yml`:
+
+```powershell
+pnpm configure:hosting -- --origin https://actionproof.example.com
+pnpm host:build
+cloudflared tunnel --config .actionproof/cloudflare.yml ingress validate
+pnpm host:start
+pnpm host:status
+```
+
+`configure:hosting` intentionally sets `ENABLE_LIVE_WRITES=false` and
+`ALLOW_MAINNET_BROADCAST=false`. For a supervised Galileo demo window only, set
+`ENABLE_LIVE_WRITES=true` locally, restart `actionproof-api`, perform the scenario, then restore the
+read-only configuration. Never expose an anonymously writable deployment backed by funded keys.
+
+Cloudflare's current documentation for [locally managed tunnels](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/do-more-with-tunnels/local-management/create-local-tunnel/),
+[ordered path ingress](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/do-more-with-tunnels/local-management/configuration-file/),
+and [Windows service operation](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/do-more-with-tunnels/local-management/as-a-service/windows/)
+is the source of truth for tunnel lifecycle and recovery.
+
 ## Configuration tiers
 
 Start from `.env.example`. The checked-in file contains descriptions and no secrets.

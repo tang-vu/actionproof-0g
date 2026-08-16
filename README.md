@@ -9,6 +9,8 @@ autonomous AI-agent transactions before execution on 0G.
 [![License: MIT](https://img.shields.io/badge/License-MIT-62e7e1.svg)](LICENSE)
 [![0G](https://img.shields.io/badge/Built%20on-0G-7cf5a5.svg)](https://0g.ai/)
 
+**Live Galileo evidence demo:** [actionproof.tangvu.dev](https://actionproof.tangvu.dev)
+
 > [!WARNING]
 > ActionProof is experimental security infrastructure, has not been audited, and does not guarantee
 > transaction safety. Use only the included valueless demo contracts—not valuable assets.
@@ -39,6 +41,11 @@ same UI but only shows 0G receipts returned by real adapters._
 ![ActionProof mobile verification trace](docs/images/actionproof-mobile.png)
 
 _The same public verification and tamper workflow is exercised on the Pixel 7 Playwright viewport._
+
+The hosted judge build runs against live Galileo read probes and serves the real safe and blocked
+traces captured below. Anonymous paid writes are deliberately disabled so a public visitor cannot
+spend the server's Compute, Storage, or relayer balance. An operator can temporarily enable the
+fully live workflow by following [DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ## Architecture
 
@@ -133,11 +140,12 @@ production adapters on 2026-08-15:
 
 - **Safe:** [Storage sequence 146933](https://storagescan-galileo.0g.ai/submission/146933),
   [anchor](https://chainscan-galileo.0g.ai/tx/0xdf92eeafe30634018a05106c05b437d514b713fae1fb893d05c569f0d5d5b3d8),
-  and [guarded execution](https://chainscan-galileo.0g.ai/tx/0x0ac9679df0f9e260e0b0055983bf18552d7ae45dffd81ad16b2ae92fca153491).
+  [guarded execution](https://chainscan-galileo.0g.ai/tx/0x0ac9679df0f9e260e0b0055983bf18552d7ae45dffd81ad16b2ae92fca153491),
+  and [public trace](https://actionproof.tangvu.dev/trace/fdad8624-8cce-4b8a-8576-c724463469c7).
 - **Dangerous:** unlimited approval produced risk `100`, rule `UNLIMITED_ERC20_APPROVAL`,
   [Storage sequence 146934](https://storagescan-galileo.0g.ai/submission/146934), and an
   [audit-only block anchor](https://chainscan-galileo.0g.ai/tx/0x2ed9f81dd07e7a5dbc71d5ed271f90cdf5da5e0e3e35e34462349f7c4b2627c0)
-  with no execution transaction.
+  with no execution transaction; inspect the [public trace](https://actionproof.tangvu.dev/trace/e68696d3-e399-49f9-ab70-3188fac06ab1).
 - **Tamper:** changing the safe calldata made both the action-hash and attestation-binding checks
   fail. The final counter state was `2`; the evidence run advanced the nonce lane to `5`.
 

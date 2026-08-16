@@ -73,6 +73,12 @@ export function IntegrationStatus() {
               Local sandbox evidence is isolated and never represented as 0G activity.
             </p>
           )}
+          {status.mode === "live" && !status.writesEnabled && (
+            <p className="sandbox-note">
+              Public read-only mode: live Galileo evidence remains verifiable while anonymous paid
+              writes are blocked.
+            </p>
+          )}
         </>
       )}
     </aside>

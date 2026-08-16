@@ -1,0 +1,18 @@
+tunnel: <TUNNEL_UUID>
+credentials-file: <ABSOLUTE_PATH_TO_TUNNEL_CREDENTIALS_JSON>
+
+ingress:
+  - hostname: actionproof.example.com
+    path: ^/(v1(/.*)?|healthz|readyz)$
+    service: http://127.0.0.1:8787
+    originRequest:
+      connectTimeout: 10s
+      keepAliveConnections: 16
+      keepAliveTimeout: 1m30s
+  - hostname: actionproof.example.com
+    service: http://127.0.0.1:3020
+    originRequest:
+      connectTimeout: 10s
+      keepAliveConnections: 16
+      keepAliveTimeout: 1m30s
+  - service: http_status:404
