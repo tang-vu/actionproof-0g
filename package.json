@@ -19,6 +19,7 @@
     "bootstrap:testnet": "pnpm --filter @actionproof/api bootstrap:testnet",
     "register:agent": "pnpm --filter @actionproof/api register:agent",
     "configure:hosting": "tsx scripts/configure-hosting.ts",
+    "state:merge": "tsx scripts/merge-runtime-state.ts",
     "host:build": "pnpm build:libs && pnpm --filter @actionproof/api build && pnpm --filter @actionproof/web build",
     "host:start": "pm2 start ecosystem.config.cjs --env production && pm2 save",
     "host:status": "pm2 list --no-color",

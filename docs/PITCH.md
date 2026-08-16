@@ -74,8 +74,8 @@ locked pending an independent audit, funded roles, and explicit broadcast author
 1. Independent contract/application audit and KMS-backed threshold verifier.
 2. Richer state-diff tracing and protocol-specific policies.
 3. Durable queue/database and event indexer.
-4. Extend the implemented read-only ERC-8004 identity binding with separately approved registration
-   and reputation evidence; keep ERC-7857 out until its production oracle path is proven.
+4. Extend the registered ERC-8004 identity and enforced wallet binding with reputation evidence;
+   keep ERC-7857 out until its production oracle path is proven.
 
 No token. No custody. No claim that AI guarantees safety.
 

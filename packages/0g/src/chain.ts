@@ -12,6 +12,7 @@ import {
   type ChainReceipt,
   type SimulationResult,
 } from "@actionproof/core";
+import { setTimeout as delay } from "node:timers/promises";
 import {
   getAddress,
   hashTypedData,
@@ -74,6 +75,24 @@ function explorerLink(baseUrl: string | undefined, transactionHash: Hex): string
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Unknown RPC simulation error";
+}
+
+async function confirmedReceipt(
+  publicClient: PublicClient<Transport, Chain>,
+  transactionHash: Hex,
+) {
+  return publicClient.waitForTransactionReceipt({ hash: transactionHash }).catch(async (error) => {
+    // Some Galileo RPC nodes briefly return "receipt not found" after observing the transaction.
+    // Recover only by reading the exact already-broadcast hash; never submit a replacement here.
+    for (let attempt = 0; attempt < 30; attempt += 1) {
+      try {
+        return await publicClient.getTransactionReceipt({ hash: transactionHash });
+      } catch {
+        await delay(2_000);
+      }
+    }
+    throw error;
+  });
 }
 
 /** Production 0G Chain adapter. Signers are supplied by the caller; raw keys are never accepted. */
@@ -322,9 +341,7 @@ export class ZgChainAdapter implements ChainAdapter {
   }
 
   async #submission(attestation: Attestation, transactionHash: Hex): Promise<ChainSubmission> {
-    const receipt = await this.#config.publicClient.waitForTransactionReceipt({
-      hash: transactionHash,
-    });
+    const receipt = await confirmedReceipt(this.#config.publicClient, transactionHash);
     if (receipt.status !== "success") {
       throw new Error(`0G Chain transaction ${transactionHash} reverted`);
     }

@@ -1,0 +1,20 @@
+{
+  "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
+  "name": "ActionProof",
+  "description": "Experimental runtime firewall that creates verifiable pre-execution evidence for autonomous agent transactions on 0G.",
+  "image": "https://actionproof.tangvu.dev/actionproof-agent.svg",
+  "services": [
+    {
+      "name": "web",
+      "endpoint": "https://actionproof.tangvu.dev"
+    }
+  ],
+  "x402Support": false,
+  "active": true,
+  "registrations": [
+    {
+      "agentId": 278,
+      "agentRegistry": "eip155:16602:0x8004A818BFB912233c491871b3d84c89A494BD9e"
+    }
+  ]
+}

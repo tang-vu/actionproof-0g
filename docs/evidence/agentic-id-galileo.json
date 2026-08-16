@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "1.0",
+  "network": "0G Galileo Testnet",
+  "chainId": 16602,
+  "capturedAt": "2026-08-16T17:39:46.218Z",
+  "standard": "ERC-8004",
+  "registry": "0x8004A818BFB912233c491871b3d84c89A494BD9e",
+  "agentId": "278",
+  "owner": "0xea88D7275c3cd9af68898a628a10D356A2E31d85",
+  "agentWallet": "0xea88D7275c3cd9af68898a628a10D356A2E31d85",
+  "registrationUri": "https://actionproof.tangvu.dev/.well-known/agent-registration.json",
+  "registration": {
+    "transactionHash": "0xb8c4509e75baee80860824e2d12fbb4a447cab423a364853d43e20bb5677dce9",
+    "blockNumber": 49772562,
+    "explorerUrl": "https://chainscan-galileo.0g.ai/tx/0xb8c4509e75baee80860824e2d12fbb4a447cab423a364853d43e20bb5677dce9"
+  },
+  "uriUpdate": {
+    "transactionHash": "0xf806f44a26ae5b030d18fc67214f2ed88b4da31e721050476d15a2e9434a506e",
+    "blockNumber": 49772872,
+    "explorerUrl": "https://chainscan-galileo.0g.ai/tx/0xf806f44a26ae5b030d18fc67214f2ed88b4da31e721050476d15a2e9434a506e"
+  },
+  "postWriteChecks": {
+    "ownerMatches": true,
+    "agentWalletMatchesActionAgent": true,
+    "tokenUriMatchesPublicRegistration": true,
+    "registrationFileHttpStatus": 200,
+    "imageHttpStatus": 200
+  }
+}

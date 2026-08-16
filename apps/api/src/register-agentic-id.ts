@@ -1,6 +1,7 @@
 import "./load-local-env.js";
 
 import { ERC8004_IDENTITY_REGISTRIES } from "@actionproof/0g";
+import { setTimeout as delay } from "node:timers/promises";
 import {
   createPublicClient,
   createWalletClient,
@@ -89,11 +90,22 @@ async function transactionEvidence(
   publicClient: ReturnType<typeof createPublicClient>,
   transactionHash: Hash,
 ) {
-  const receipt = await publicClient.waitForTransactionReceipt({
-    hash: transactionHash,
-    confirmations: 1,
-    timeout: 120_000,
-  });
+  const receipt = await publicClient
+    .waitForTransactionReceipt({
+      hash: transactionHash,
+      confirmations: 1,
+      timeout: 120_000,
+    })
+    .catch(async (initialError: unknown) => {
+      for (let attempt = 0; attempt < 30; attempt += 1) {
+        try {
+          return await publicClient.getTransactionReceipt({ hash: transactionHash });
+        } catch {
+          await delay(2_000);
+        }
+      }
+      throw initialError;
+    });
   if (receipt.status !== "success") throw new Error("Agentic ID transaction reverted");
   return receipt;
 }

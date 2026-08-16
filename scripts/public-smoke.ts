@@ -6,6 +6,11 @@ interface EvidenceFile {
   dangerous: { traceId: string };
 }
 
+interface AgenticEvidenceFile {
+  agentId: string;
+  registrationUri: string;
+}
+
 interface TraceSummary {
   id: string;
   mode: string;
@@ -53,6 +58,12 @@ const origin = parsedOrigin.origin;
 const evidence = JSON.parse(
   await readFile(path.resolve(import.meta.dirname, "../docs/evidence/galileo-live.json"), "utf8"),
 ) as EvidenceFile;
+const agenticEvidence = JSON.parse(
+  await readFile(
+    path.resolve(import.meta.dirname, "../docs/evidence/agentic-id-galileo.json"),
+    "utf8",
+  ),
+) as AgenticEvidenceFile;
 
 const root = await get(origin, "/");
 const rootHtml = await root.text();
@@ -84,6 +95,22 @@ for (const id of ["chain", "compute", "storage"]) {
     `${id} integration is not available`,
   );
 }
+invariant(
+  integrations.services.some(
+    (service) => service.id === "identity" && service.status === "available",
+  ),
+  `ERC-8004 agent ${agenticEvidence.agentId} is not available or does not bind the action agent`,
+);
+const registration = await get(origin, new URL(agenticEvidence.registrationUri).pathname);
+const registrationJson = (await registration.json()) as {
+  registrations?: Array<{ agentId?: number }>;
+};
+invariant(
+  registrationJson.registrations?.some(
+    (entry) => String(entry.agentId) === agenticEvidence.agentId,
+  ),
+  "public ERC-8004 registration file does not contain the committed agent ID",
+);
 
 const before = (await (await get(origin, "/v1/traces")).json()) as { traces: TraceSummary[] };
 const expected = [
@@ -128,7 +155,7 @@ console.log(
       origin,
       mode: integrations.mode,
       writesEnabled: integrations.writesEnabled,
-      coreIntegrations: ["chain", "compute", "storage"],
+      integrations: ["chain", "compute", "storage", `erc-8004:${agenticEvidence.agentId}`],
       verifiedEvidence: expected.map(([traceId, verdict]) => ({ traceId, verdict })),
       publicWriteProbe: "LIVE_WRITES_DISABLED",
       traceCountUnchanged: after.traces.length,

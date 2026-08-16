@@ -56,9 +56,9 @@ win. The MVP uses only valueless demo contracts and is experimental, unaudited i
   fallback.
 - **0G Storage:** official TypeScript SDK and Turbo indexer; canonical report upload/retrieval;
   returned-root check; independent byte comparison and Merkle-root recomputation.
-- **Agentic ID:** optional read-only ERC-8004 Identity Registry evidence binds the configured global
-  `agentId` and registered agent wallet into the report; wallet mismatch or resolution failure
-  blocks. Registration writes and ERC-7857 remain deliberately outside the critical path.
+- **Agentic ID:** registered Galileo ERC-8004 agent `278`; official Identity Registry reads bind its
+  owner, agent wallet, and public URI into every live report. Wallet mismatch or resolution failure
+  blocks. Registration is separately gated; ERC-7857 remains outside the critical path.
 
 ## Architecture summary
 
@@ -142,8 +142,9 @@ Publishing this post is an external action and requires owner approval.
   server-validated bearer token for paid Galileo API writes.
 - Galileo Compute, Storage, deployment, safe execution, block anchor, and tamper evidence are live
   and recorded in `docs/evidence/galileo-live.json`. Mainnet remains undeployed and unauthorized.
-- ERC-8004 registration is not automated; ERC-7857 is deferred for the production-readiness reasons
-  recorded in research.
+- ERC-8004 agent `278` is registered on Galileo with public receipt/URI evidence. Its identity and
+  wallet binding do not imply trust, audit, or safety. ERC-7857 is deferred for the
+  production-readiness reasons recorded in research.
 
 ## Final submission checklist
 

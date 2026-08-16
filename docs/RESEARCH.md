@@ -249,10 +249,13 @@ it reads `ownerOf`, `getAgentWallet`, and `tokenURI` from the official network r
 registry, chain, owner, wallet, URI, timestamp, and match result to the canonical risk report. The
 registered wallet must match the exact action-agent address. A mismatch produces
 `AGENTIC_ID_WALLET_MISMATCH`; a configured resolver failure produces `AGENTIC_ID_UNAVAILABLE`.
-Both are deterministic blocking findings. A separate registration command now implements the
-official `register()` then `setAgentURI()` flow with Galileo-only and exact-wallet gates. Its first
-readiness simulation succeeded; no registration claim is made until a receipt and post-write reads
-exist. ERC-7857 remains deferred for the production-readiness reasons above.
+Both are deterministic blocking findings. A separate registration command implements the official
+`register()` then `setAgentURI()` flow with Galileo-only and exact-wallet gates. After explicit
+testnet authorization, agent `278` was registered at the official Galileo Identity Registry and its
+URI was set to the public registration file. Both receipts, block numbers, `ownerOf`, agent-wallet,
+and `tokenURI` post-write checks are recorded in `docs/evidence/agentic-id-galileo.json`. The next
+live safe/block reports bound that identity evidence into their canonical stored bytes. ERC-7857
+remains deferred for the production-readiness reasons above.
 
 ## Contradictions and deprecations to guard against
 

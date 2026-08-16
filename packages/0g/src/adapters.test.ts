@@ -542,6 +542,7 @@ describe("production chain adapter wiring", () => {
       result: [{ SourceCode: "contract Verified {}", ABI: "[]" }],
     };
     let transactionIndex = 0;
+    let recoveredReceiptReads = 0;
     const publicClient = {
       getChainId: async () => 16602,
       getBytecode: async () => "0x6000",
@@ -553,10 +554,14 @@ describe("production chain adapter wiring", () => {
         simulatedFunctions.push(request.functionName);
         return { request };
       },
-      waitForTransactionReceipt: async () => ({
-        status: "success",
-        blockNumber: BigInt(transactionIndex),
-      }),
+      waitForTransactionReceipt: async () => {
+        if (transactionIndex === 1) throw new Error("temporary receipt not found");
+        return { status: "success", blockNumber: BigInt(transactionIndex) };
+      },
+      getTransactionReceipt: async () => {
+        recoveredReceiptReads += 1;
+        return { status: "success", blockNumber: BigInt(transactionIndex) };
+      },
     };
     const walletClient = {
       writeContract: async (request: { account: { address: string }; functionName: string }) => {
@@ -618,5 +623,6 @@ describe("production chain adapter wiring", () => {
     expect(writtenFunctions).toEqual(["anchorAttestation", "executeAttestedAction"]);
     expect(anchored.receipt.explorerUrl).toContain(anchored.receipt.transactionHash);
     expect(executed.receipt.explorerUrl).toContain(executed.receipt.transactionHash);
+    expect(recoveredReceiptReads).toBe(1);
   });
 });

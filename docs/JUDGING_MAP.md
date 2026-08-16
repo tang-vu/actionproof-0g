@@ -63,16 +63,19 @@ Then open `http://127.0.0.1:3000`, or inspect the read-only live evidence deploy
   recomputes the Merkle root.
 - This extra verification addresses the current documented/published high-level proof-check gap.
 - The exact root plus canonical report hash are both signed and anchored.
-- Live roots `0x75dcd6…208cc` and `0x4f7721…f480c` are retrievable through Storage sequences
-  [146933](https://storagescan-galileo.0g.ai/submission/146933) and
-  [146934](https://storagescan-galileo.0g.ai/submission/146934).
+- Live roots `0x1a7788…02f2` and `0x4e747b…0765` are retrievable through Storage sequences
+  [146979](https://storagescan-galileo.0g.ai/submission/146979) and
+  [146980](https://storagescan-galileo.0g.ai/submission/146980).
 
 ### Agentic ID
 
-- [`agentic-id.ts`](../packages/0g/src/agentic-id.ts) performs optional read-only lookups against the
-  official ERC-8004 Identity Registry and binds owner/wallet/URI evidence into canonical reports.
-- Wallet mismatch and configured-resolution failure are deterministic blocks. Registration writes
-  and the mock-oracle-dependent ERC-7857 path remain deliberately deferred.
+- [`agentic-id.ts`](../packages/0g/src/agentic-id.ts) performs reads against the official ERC-8004
+  Identity Registry and binds owner/wallet/URI evidence into canonical reports.
+- Galileo agent `278` has a public registration document and two independently openable ChainScan
+  receipts in [`agentic-id-galileo.json`](evidence/agentic-id-galileo.json). The identity-bound safe
+  and blocked reports are the public demo's primary traces.
+- Wallet mismatch and configured-resolution failure are deterministic blocks. ERC-7857 remains
+  deliberately deferred because the documented production oracle/re-encryption path is insufficient.
 - [`readiness.ts`](../packages/0g/src/readiness.ts) exposes no-key/no-spend Chain, Compute model
   catalog, and Storage node-selection probes; `pnpm probe:0g` exercises Galileo and Mainnet.
 

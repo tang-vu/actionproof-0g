@@ -32,6 +32,10 @@ const apiPort = requirePort(readArgument("--api-port"), 8787, "--api-port");
 const webPort = requirePort(readArgument("--web-port"), 3020, "--web-port");
 const envPath = path.resolve(import.meta.dirname, "../.env");
 const evidencePath = path.resolve(import.meta.dirname, "../docs/evidence/galileo-live.json");
+const agenticEvidencePath = path.resolve(
+  import.meta.dirname,
+  "../docs/evidence/agentic-id-galileo.json",
+);
 if (!existsSync(envPath)) {
   throw new TypeError(".env is missing; copy .env.example and configure live 0G credentials first");
 }
@@ -48,15 +52,31 @@ function evidenceTraceId(scenario: "safe" | "dangerous"): string {
     : "";
 }
 
+function agenticId(): string {
+  if (!existsSync(agenticEvidencePath)) return "";
+  const evidence = JSON.parse(readFileSync(agenticEvidencePath, "utf8")) as Record<string, unknown>;
+  const value = evidence.agentId;
+  if (
+    evidence.chainId !== 16602 ||
+    evidence.registry !== "0x8004A818BFB912233c491871b3d84c89A494BD9e" ||
+    typeof value !== "string" ||
+    !/^(?:0|[1-9][0-9]*)$/u.test(value)
+  ) {
+    throw new TypeError("Agentic ID evidence is malformed or not the official Galileo registry");
+  }
+  return value;
+}
+
 const updates = new Map<string, string>([
   ["API_HOST", "127.0.0.1"],
   ["API_PORT", String(apiPort)],
-  ["API_DATA_DIR", "apps/api/.actionproof-data"],
+  ["API_DATA_DIR", path.resolve(import.meta.dirname, "../apps/api/.actionproof-data")],
   ["API_CORS_ORIGINS", `${origin},http://127.0.0.1:${webPort},http://localhost:${webPort}`],
   ["NEXT_PUBLIC_API_URL", origin],
   ["NEXT_PUBLIC_ACTIONPROOF_MODE", "live"],
   ["NEXT_PUBLIC_SAFE_TRACE_ID", evidenceTraceId("safe")],
   ["NEXT_PUBLIC_BLOCK_TRACE_ID", evidenceTraceId("dangerous")],
+  ["OG_AGENTIC_ID", agenticId()],
   ["ENABLE_LIVE_WRITES", "false"],
   ["ALLOW_MAINNET_BROADCAST", "false"],
 ]);

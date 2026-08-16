@@ -1,4 +1,5 @@
 import { setTimeout as delay } from "node:timers/promises";
+import { randomBytes } from "node:crypto";
 
 import "./load-local-env.js";
 
@@ -39,11 +40,12 @@ if (config.LIVE_SMOKE_CONFIRM !== expectedConfirmation) {
 }
 
 const runtime = createLiveRuntime(config);
+const operatorToken = randomBytes(32).toString("base64url");
 const requester = requireLiveValue(runtime.requesterAddress, "live requester account");
 const counter = requireLiveValue(config.DEMO_COUNTER_ADDRESS, "DEMO_COUNTER_ADDRESS") as Address;
 const token = requireLiveValue(config.DEMO_TOKEN_ADDRESS, "DEMO_TOKEN_ADDRESS") as Address;
 const app = await buildApp({
-  config,
+  config: { ...config, ACTIONPROOF_OPERATOR_TOKEN: operatorToken },
   runtime,
   store: new JsonFileStateStore(config.API_DATA_DIR),
   logger: false,
@@ -120,6 +122,7 @@ async function runScenario(scenario: LiveScenario): Promise<ActionTrace> {
   const created = await app.inject({
     method: "POST",
     url: "/v1/jobs",
+    headers: { authorization: `Bearer ${operatorToken}` },
     payload: { action: actionFor(scenario, await nextNonce()), execute: true },
   });
   if (created.statusCode !== 202) throw new Error(created.body);
@@ -136,13 +139,17 @@ async function runScenario(scenario: LiveScenario): Promise<ActionTrace> {
     trace.storage.mode === "0g" &&
     trace.chain.mode === "0g" &&
     trace.verification.valid;
+  const identityValid =
+    config.OG_AGENTIC_ID === undefined ||
+    (trace.report.agentIdentity?.agentId === config.OG_AGENTIC_ID &&
+      trace.report.agentIdentity.matchesActionAgent);
   const scenarioValid =
     scenario === "safe"
       ? trace.report.verdict === "allow" && trace.execution.status === "executed"
       : trace.report.verdict === "block" &&
         trace.execution.status === "blocked" &&
         trace.report.finalPolicy.blockingRuleIds.includes("UNLIMITED_ERC20_APPROVAL");
-  if (!commonValid || !scenarioValid) {
+  if (!commonValid || !identityValid || !scenarioValid) {
     throw new Error(
       `Live ${scenario} invariant failed: verdict=${trace.report.verdict}, execution=${trace.execution.status}, verification=${trace.verification.valid}`,
     );
@@ -161,6 +168,7 @@ function summary(trace: ActionTrace) {
     model: trace.report.compute.model,
     provider: trace.report.compute.provider,
     requestId: trace.report.compute.requestId,
+    agentIdentity: trace.report.agentIdentity,
     storage: trace.storage,
     anchor: trace.chain,
     execution: trace.execution,

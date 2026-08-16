@@ -138,28 +138,33 @@ hash is returned.
 ## Verified Galileo evidence
 
 The checked-in [live evidence record](docs/evidence/galileo-live.json) was produced by the real
-production adapters on 2026-08-15:
+production adapters on 2026-08-17 and includes ERC-8004 identity evidence inside each canonical
+report:
 
-- **Safe:** [Storage sequence 146933](https://storagescan-galileo.0g.ai/submission/146933),
-  [anchor](https://chainscan-galileo.0g.ai/tx/0xdf92eeafe30634018a05106c05b437d514b713fae1fb893d05c569f0d5d5b3d8),
-  [guarded execution](https://chainscan-galileo.0g.ai/tx/0x0ac9679df0f9e260e0b0055983bf18552d7ae45dffd81ad16b2ae92fca153491),
-  and [public trace](https://actionproof.tangvu.dev/trace/fdad8624-8cce-4b8a-8576-c724463469c7).
+- **Safe:** [Storage sequence 146979](https://storagescan-galileo.0g.ai/submission/146979),
+  [anchor](https://chainscan-galileo.0g.ai/tx/0x26ab6671e5e211052ae87330dd9d1e3ca9c6f572f35955b2716dfe39b7bea240),
+  [guarded execution](https://chainscan-galileo.0g.ai/tx/0x766c1402b10ece0e35dd27deaf1ecb3659c0993535b3f1257327f9d3ebb6cabf),
+  and [public trace](https://actionproof.tangvu.dev/trace/ed065611-c0df-41eb-a4f0-83cad47de6cd).
 - **Dangerous:** unlimited approval produced risk `100`, rule `UNLIMITED_ERC20_APPROVAL`,
-  [Storage sequence 146934](https://storagescan-galileo.0g.ai/submission/146934), and an
-  [audit-only block anchor](https://chainscan-galileo.0g.ai/tx/0x2ed9f81dd07e7a5dbc71d5ed271f90cdf5da5e0e3e35e34462349f7c4b2627c0)
-  with no execution transaction; inspect the [public trace](https://actionproof.tangvu.dev/trace/e68696d3-e399-49f9-ab70-3188fac06ab1).
+  [Storage sequence 146980](https://storagescan-galileo.0g.ai/submission/146980), and an
+  [audit-only block anchor](https://chainscan-galileo.0g.ai/tx/0xf2374a7cd0b156134c8241b1b0265883bede0994b5b31a239d5f0c6647845d11)
+  with no execution transaction; inspect the [public trace](https://actionproof.tangvu.dev/trace/eaebde96-8403-4f5c-8e7a-af4354c70890).
 - **Tamper:** changing the safe calldata made both the action-hash and attestation-binding checks
-  fail. The final counter state was `2`; the evidence run advanced the nonce lane to `5`.
+  fail. The final counter state is `3`; the evidence run advanced the nonce lane to `8`.
 
 ### Agentic ID
 
 ActionProof optionally resolves an official ERC-8004 `agentId` from the published Identity Registry,
 reads `ownerOf`, `getAgentWallet`, and `tokenURI`, and binds that evidence into the canonical report.
 The registered wallet must equal the exact action-agent address or deterministic policy blocks the
-action. Resolution is read-only. A separate Galileo-only, dry-run-first `pnpm register:agent` command
-can create the identity after explicit authorization; registration is never part of action analysis.
-ERC-7857 remains deferred because its current production oracle/re-encryption path is not suitable
-for this firewall's critical path.
+action. ActionProof agent `278` is registered on Galileo at the official registry; the
+[registration receipt](https://chainscan-galileo.0g.ai/tx/0xb8c4509e75baee80860824e2d12fbb4a447cab423a364853d43e20bb5677dce9),
+[URI receipt](https://chainscan-galileo.0g.ai/tx/0xf806f44a26ae5b030d18fc67214f2ed88b4da31e721050476d15a2e9434a506e),
+[public registration file](https://actionproof.tangvu.dev/.well-known/agent-registration.json), and
+[sanitized evidence](docs/evidence/agentic-id-galileo.json) are independently inspectable.
+Registration stays outside action analysis and requires a separate Galileo-only, dry-run-first
+command plus an exact confirmation. ERC-7857 remains deferred because its current production
+oracle/re-encryption path is not suitable for this firewall's critical path.
 
 ## Quick start
 

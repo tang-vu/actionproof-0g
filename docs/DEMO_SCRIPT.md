@@ -33,8 +33,9 @@ nonzero if any invariant is missing.
 
 For the verified Galileo production-adapter story, use `pnpm demo:live`. The reference evidence is
 checked in at `docs/evidence/galileo-live.json`; safe trace ID is
-`fdad8624-8cce-4b8a-8576-c724463469c7` and dangerous trace ID is
-`e68696d3-e399-49f9-ab70-3188fac06ab1` in the persisted operator data directory.
+`ed065611-c0df-41eb-a4f0-83cad47de6cd` and dangerous trace ID is
+`eaebde96-8403-4f5c-8e7a-af4354c70890` in the persisted operator data directory. Both reports include
+matching ERC-8004 agent `278` evidence.
 
 ### Fastest judge path — no setup and no spend
 

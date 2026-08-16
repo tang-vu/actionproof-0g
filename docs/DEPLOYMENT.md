@@ -223,6 +223,10 @@ Record both receipts without keys, set `OG_AGENTIC_ID`, and require live readine
 registered wallet matches `ACTIONPROOF_AGENT_ADDRESS`. ERC-8004 registration proves ownership and
 discoverability, not the safety or correctness of the advertised agent.
 
+The current Galileo deployment registered agent `278` and set
+`https://actionproof.tangvu.dev/.well-known/agent-registration.json`. Sanitized registration,
+URI-update, and post-write evidence is committed in `docs/evidence/agentic-id-galileo.json`.
+
 ## Compute and Storage readiness
 
 1. At `https://pc.testnet.0g.ai`, connect a low-value wallet, deposit testnet 0G into the Router

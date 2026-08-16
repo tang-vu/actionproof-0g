@@ -112,11 +112,26 @@ authoritative timestamped change log; no history or timestamps are fabricated.
 - Expanded Playwright coverage for the guided read-only journey on desktop and Pixel 7, including
   link accessibility and horizontal-overflow regression checks.
 
+## 2026-08-17 — Registered identity and identity-bound live proof
+
+- Registered ActionProof as ERC-8004 agent `278` through the official Galileo Identity Registry,
+  then set and independently read back its public standards-compliant registration URI. Both
+  receipts and owner/wallet/URI checks are committed without secrets.
+- Re-ran the paid production-adapter safe/block/tamper story with ERC-8004 evidence bound inside the
+  canonical reports: Storage sequences `146979` and `146980`, two audit anchors, one safe guarded
+  execution, one deterministic block, and seven independent checks per original trace.
+- Exercised a real transient RPC receipt-lookup failure. The job failed closed and never executed;
+  the Chain adapter was hardened to recover only the exact already-broadcast hash without
+  resubmission. Adapter regression coverage now reproduces that failure mode.
+- Corrected filtered-CLI runtime path resolution, added an atomic dry-run-first state merge utility,
+  retained the historical traces, and moved the new identity-bound traces into the canonical public
+  history. The hosted API remains read-only.
+
 ## Validation record
 
-The latest `pnpm verify` completed successfully on 2026-08-17 in 128 seconds against the hosted
-evidence working tree. Mainnet deployment remains deliberately blocked by funding, review, audit,
-and explicit authorization requirements.
+The latest `pnpm verify` completed successfully on 2026-08-17 in 121.3 seconds against the exact
+identity-bound evidence tree. Mainnet deployment remains deliberately blocked by funding, review,
+audit, and explicit authorization requirements.
 
 | Check                     | Result                                                                       |
 | ------------------------- | ---------------------------------------------------------------------------- |
@@ -128,9 +143,9 @@ and explicit authorization requirements.
 | Foundry unit/fuzz tests   | 31 passed; four fuzz properties ran 512 cases each                           |
 | Production builds         | Contracts, Core, 0G adapters, API, and Next.js passed; guard runtime 6,127 B |
 | Playwright desktop/mobile | 8 passed across Chromium desktop and Pixel 7                                 |
-| Secret scan               | 110 repository files checked; passed                                         |
+| Secret scan               | 115 repository files checked; passed                                         |
 | Production audit          | No known vulnerabilities found                                               |
 | Sandbox smoke             | Safe executed; unlimited approval blocked; tamper verification rejected      |
 | Deployment evidence       | Galileo deployed/source-verified; Mainnet dry-run passed, broadcast disabled |
-| Public 0G probes          | Chain, Compute catalog, and Storage indexer passed on Galileo and Mainnet    |
-| Live paid 0G proof        | Safe executed; unlimited approval blocked; calldata tamper rejected          |
+| Public 0G probes          | Chain, Compute, Storage, and ERC-8004 agent `278` passed                     |
+| Live paid 0G proof        | Identity-bound safe executed; unlimited approval blocked; tamper rejected    |
