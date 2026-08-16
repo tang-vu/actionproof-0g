@@ -101,6 +101,7 @@ Architecture details and diagrams are in `docs/ARCHITECTURE.md` and the `/archit
 | --------------------------------------------------- | ------------------------------------------------------------------- |
 | International judge README and architecture diagram | `README.md`                                                         |
 | Three-minute narration and operator prompts         | `docs/DEMO_SCRIPT.md`                                               |
+| Reproducible captioned demo recording               | `pnpm demo:record`, `apps/web/scripts/record-demo.mjs`              |
 | Ready-to-paste submission and mandatory social post | `docs/SUBMISSION.md`                                                |
 | Short pitch deck source                             | `docs/PITCH.md`                                                     |
 | Exact research sources and decisions                | `docs/RESEARCH.md`                                                  |

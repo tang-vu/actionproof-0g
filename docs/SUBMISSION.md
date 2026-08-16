@@ -158,7 +158,8 @@ Publishing this post is an external action and requires owner approval.
 - [x] Dangerous action is anchored and execution refusal is demonstrated.
 - [x] Tamper and replay failures are recorded.
 - [x] Live demo URL works in a fresh browser over HTTPS.
-- [ ] Demo video URL is recorded and published.
+- [x] A captioned demo video can be reproduced locally with `pnpm demo:record`.
+- [ ] Demo video URL is owner-approved and published.
 - [x] Repository secret scan finds no private key or API key; no fabricated metrics/claims exist.
 - [x] Security disclaimer and known limitations remain visible.
 - [x] Project fields meet the documented platform length requirements.

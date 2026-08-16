@@ -50,6 +50,17 @@ The hosted Analyze page mirrors the selected envelope and links to the matching 
 It intentionally does not spend funded server balances. `pnpm smoke:public` independently verifies
 that this deployment is live, the evidence is intact, and anonymous writes fail synchronously.
 
+### Generate a publish-ready video locally
+
+```bash
+pnpm demo:record
+```
+
+The recorder drives the public safe/block/tamper evidence, burns concise English story captions into
+the browser recording, and writes timestamped WebM plus MP4 (when `ffmpeg` is installed) under the
+ignored `.actionproof/demo/` directory. It performs no paid write and publishes nothing. Review the
+artifact, add the narration below if desired, then obtain owner approval before uploading it.
+
 ## Narration
 
 ### 0:00–0:25 — Problem and boundary

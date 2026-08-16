@@ -126,10 +126,12 @@ authoritative timestamped change log; no history or timestamps are fabricated.
 - Corrected filtered-CLI runtime path resolution, added an atomic dry-run-first state merge utility,
   retained the historical traces, and moved the new identity-bound traces into the canonical public
   history. The hosted API remains read-only.
+- Added and exercised a read-only captioned demo recorder. The local reference output is a 77.4-second
+  1280×720 H.264 MP4; generated media remains ignored until the owner approves publication.
 
 ## Validation record
 
-The latest `pnpm verify` completed successfully on 2026-08-17 in 121.3 seconds against the exact
+The latest `pnpm verify` completed successfully on 2026-08-17 in 118.8 seconds against the exact
 identity-bound evidence tree. Mainnet deployment remains deliberately blocked by funding, review,
 audit, and explicit authorization requirements.
 
@@ -143,7 +145,7 @@ audit, and explicit authorization requirements.
 | Foundry unit/fuzz tests   | 31 passed; four fuzz properties ran 512 cases each                           |
 | Production builds         | Contracts, Core, 0G adapters, API, and Next.js passed; guard runtime 6,127 B |
 | Playwright desktop/mobile | 8 passed across Chromium desktop and Pixel 7                                 |
-| Secret scan               | 115 repository files checked; passed                                         |
+| Secret scan               | 116 repository files checked; passed                                         |
 | Production audit          | No known vulnerabilities found                                               |
 | Sandbox smoke             | Safe executed; unlimited approval blocked; tamper verification rejected      |
 | Deployment evidence       | Galileo deployed/source-verified; Mainnet dry-run passed, broadcast disabled |

@@ -217,6 +217,9 @@ pnpm demo
 For the browser story, run `pnpm dev`, open **Analyze**, and follow
 [the three-minute demo script](docs/DEMO_SCRIPT.md).
 
+Run `pnpm demo:record` to capture the public live proof as a captioned 1280×720 WebM and MP4 under
+the ignored `.actionproof/demo/` directory. The recorder is read-only and does not publish the file.
+
 An authorized, funded Galileo operator can reproduce the paid production-adapter flow with:
 
 ```bash
@@ -255,6 +258,7 @@ pnpm probe:0g        # public Chain/Compute-catalog/Storage-indexer probes; no k
 pnpm readiness:live  # configured model/indexer/guard/verifier checks; no paid inference or write
 pnpm test:live       # opt-in configuration/readiness checks; no implicit spending
 pnpm smoke:public    # hosted HTTPS, headers, integrations, traces, and no-spend write-gate proof
+pnpm demo:record     # captioned live Allow/Block/Break recording; no paid writes
 ```
 
 ## Live Galileo setup

@@ -16,6 +16,7 @@
     "build:libs": "pnpm --filter @actionproof/core build && pnpm --filter @actionproof/0g build",
     "demo": "pnpm build:libs && pnpm --filter @actionproof/api demo:sandbox",
     "demo:live": "pnpm build:libs && pnpm --filter @actionproof/api demo:live",
+    "demo:record": "pnpm --filter @actionproof/web exec node scripts/record-demo.mjs",
     "bootstrap:testnet": "pnpm --filter @actionproof/api bootstrap:testnet",
     "register:agent": "pnpm --filter @actionproof/api register:agent",
     "configure:hosting": "tsx scripts/configure-hosting.ts",
