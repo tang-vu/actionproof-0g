@@ -33,6 +33,7 @@
     "test:live": "pnpm build:libs && pnpm --filter @actionproof/api test:live",
     "readiness:live": "pnpm build:libs && pnpm --filter @actionproof/api readiness:live",
     "smoke:compute": "pnpm build:libs && pnpm --filter @actionproof/api smoke:compute",
+    "smoke:public": "tsx scripts/public-smoke.ts",
     "check:secrets": "tsx scripts/check-secrets.ts",
     "audit:prod": "pnpm audit --prod --audit-level high",
     "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm test:contracts && pnpm build && pnpm check:secrets && pnpm audit:prod && pnpm test:e2e"

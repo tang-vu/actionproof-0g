@@ -45,7 +45,9 @@ _The same public verification and tamper workflow is exercised on the Pixel 7 Pl
 The hosted judge build runs against live Galileo read probes and serves the real safe and blocked
 traces captured below. Anonymous paid writes are deliberately disabled so a public visitor cannot
 spend the server's Compute, Storage, or relayer balance. An operator can temporarily enable the
-fully live workflow by following [DEPLOYMENT.md](docs/DEPLOYMENT.md).
+fully live workflow behind a server-side operator token by following
+[DEPLOYMENT.md](docs/DEPLOYMENT.md). The three landing-page story cards deep-link to preserved
+allow/block evidence and a live server-side tamper check, so judges never meet a disabled dead end.
 
 ## Architecture
 
@@ -246,6 +248,7 @@ pnpm audit:prod
 pnpm probe:0g        # public Chain/Compute-catalog/Storage-indexer probes; no keys or spend
 pnpm readiness:live  # configured model/indexer/guard/verifier checks; no paid inference or write
 pnpm test:live       # opt-in configuration/readiness checks; no implicit spending
+pnpm smoke:public    # hosted HTTPS, headers, integrations, traces, and no-spend write-gate proof
 ```
 
 ## Live Galileo setup
@@ -257,7 +260,8 @@ Live mode needs:
 3. a funded testnet Compute Router balance and inference-only `sk-` key;
 4. a currently listed JSON-capable model;
 5. deployed and verified guard/demo addresses;
-6. `ENABLE_LIVE_WRITES=true` after dry-run review.
+6. a random 32+ character `ACTIONPROOF_OPERATOR_TOKEN` stored server-side;
+7. `ENABLE_LIVE_WRITES=true` after dry-run review.
 
 Put keys only in a local `.env` or secret manager. Never prefix secrets with `NEXT_PUBLIC_`, commit
 them, or paste them into chat. Mainnet also needs `ALLOW_MAINNET_BROADCAST=true` and explicit human

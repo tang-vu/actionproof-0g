@@ -68,6 +68,7 @@ export interface ActionTrace {
 export interface IntegrationStatus {
   mode: "live" | "sandbox";
   writesEnabled: boolean;
+  operatorAuthorization: { required: boolean; configured: boolean };
   network: { name: string; chainId: number };
   services: Array<{
     id: "chain" | "compute" | "storage" | "identity";

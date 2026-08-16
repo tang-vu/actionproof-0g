@@ -97,11 +97,24 @@ authoritative timestamped change log; no history or timestamps are fabricated.
 - Disabled anonymous paid writes and mainnet broadcast in the hosted configuration. Added a
   synchronous 503 API gate and UI read-only state so public traffic cannot create jobs or spend
   funded server balances.
-- Added CSP, HSTS, ordered tunnel path validation, DNS/HTTPS/CORS checks, and PM2 reboot persistence.
+- Added CSP, HSTS, ordered tunnel path validation, DNS/HTTPS/CORS checks, and PM2 recovery at owner
+  logon after reboot.
+
+## 2026-08-17 — Guided judge demo and funded-service control
+
+- Replaced the hosted analyzer's disabled dead end with scenario-aware links to the preserved real
+  Galileo safe/block traces; made the landing Allow/Block/Break cards direct proof navigation.
+- Added a supervised-write authorization boundary. Even after enabling the network write gate, live
+  API submissions fail closed without a separate 32+ character operator bearer token. Comparison is
+  constant-time, headers are redacted, and the browser keeps the token only in memory.
+- Added `pnpm smoke:public`, a no-spend assertion of HTTPS security headers, live integration status,
+  both preserved traces, trace-page rendering, synchronous public-write refusal, and unchanged state.
+- Expanded Playwright coverage for the guided read-only journey on desktop and Pixel 7, including
+  link accessibility and horizontal-overflow regression checks.
 
 ## Validation record
 
-The latest `pnpm verify` completed successfully on 2026-08-16 in 119.7 seconds against the hosted
+The latest `pnpm verify` completed successfully on 2026-08-17 in 128 seconds against the hosted
 evidence working tree. Mainnet deployment remains deliberately blocked by funding, review, audit,
 and explicit authorization requirements.
 
@@ -111,11 +124,11 @@ and explicit authorization requirements.
 | ESLint                    | Passed with zero warnings                                                    |
 | TypeScript                | Strict checks passed for Core, 0G adapters, API, and Web                     |
 | Core tests                | 10 passed                                                                    |
-| Adapter/API tests         | 17 adapter + 8 API tests passed                                              |
+| Adapter/API tests         | 17 adapter + 10 API tests passed                                             |
 | Foundry unit/fuzz tests   | 31 passed; four fuzz properties ran 512 cases each                           |
 | Production builds         | Contracts, Core, 0G adapters, API, and Next.js passed; guard runtime 6,127 B |
-| Playwright desktop/mobile | 6 passed across Chromium desktop and Pixel 7                                 |
-| Secret scan               | 109 repository files checked; passed                                         |
+| Playwright desktop/mobile | 8 passed across Chromium desktop and Pixel 7                                 |
+| Secret scan               | 110 repository files checked; passed                                         |
 | Production audit          | No known vulnerabilities found                                               |
 | Sandbox smoke             | Safe executed; unlimited approval blocked; tamper verification rejected      |
 | Deployment evidence       | Galileo deployed/source-verified; Mainnet dry-run passed, broadcast disabled |

@@ -254,9 +254,11 @@ describe("ActionProof API sandbox pipeline", () => {
     const integrations = await app.inject({ method: "GET", url: "/v1/integrations" });
     const statuses = integrations.json() as {
       writesEnabled: boolean;
+      operatorAuthorization: { required: boolean; configured: boolean };
       services: Array<{ id: string; status: string; detail: string }>;
     };
     expect(statuses.writesEnabled).toBe(false);
+    expect(statuses.operatorAuthorization).toEqual({ required: false, configured: false });
     expect(
       statuses.services
         .filter((service) => service.id !== "identity")
@@ -389,6 +391,96 @@ describe("ActionProof API sandbox pipeline", () => {
 
     expect(response.statusCode).toBe(503);
     expect(response.json()).toMatchObject({ error: { code: "LIVE_WRITES_DISABLED" } });
+  });
+
+  it("requires constant-time operator authorization before accepting live API writes", async () => {
+    const operatorToken = "test-operator-token-with-at-least-32-characters";
+    const parsed = parseEnv({
+      ACTIONPROOF_MODE: "live",
+      NODE_ENV: "test",
+      OG_NETWORK: "galileo",
+      OG_CHAIN_ID: "16602",
+      OG_RPC_URL: "https://rpc.example.test",
+      OG_EXPLORER_URL: "https://chainscan.example.test",
+      OG_STORAGE_INDEXER_URL: "https://indexer.example.test",
+      OG_STORAGE_EXPLORER_URL: "https://storage.example.test",
+      OG_STORAGE_PRIVATE_KEY: `0x${"11".repeat(32)}`,
+      OG_COMPUTE_BASE_URL: "https://compute.example.test",
+      OG_COMPUTE_API_KEY: "test-only-key",
+      OG_COMPUTE_MODEL: "test-only-model",
+      VERIFIER_PRIVATE_KEY: `0x${"22".repeat(32)}`,
+      RELAYER_PRIVATE_KEY: `0x${"33".repeat(32)}`,
+      ACTIONPROOF_GUARD_ADDRESS: COUNTER,
+      ACTIONPROOF_OPERATOR_TOKEN: operatorToken,
+      ENABLE_LIVE_WRITES: "true",
+    });
+    const sandbox = createSandboxRuntime(parsed);
+    const app = await createApp({ ...sandbox, mode: "live" }, parsed);
+
+    for (const authorization of [undefined, "Bearer wrong-operator-token"]) {
+      const response = await app.inject({
+        method: "POST",
+        url: "/v1/jobs",
+        headers: authorization ? { authorization } : undefined,
+        payload: { action: action({ nonce: "0" }), execute: true },
+      });
+      expect(response.statusCode).toBe(401);
+      expect(response.json()).toMatchObject({ error: { code: "OPERATOR_AUTH_REQUIRED" } });
+    }
+
+    const integrations = await app.inject({ method: "GET", url: "/v1/integrations" });
+    expect(integrations.json()).toMatchObject({
+      mode: "live",
+      writesEnabled: true,
+      operatorAuthorization: { required: true, configured: true },
+    });
+
+    const accepted = await app.inject({
+      method: "POST",
+      url: "/v1/jobs",
+      headers: { authorization: `Bearer ${operatorToken}` },
+      payload: { action: action({ nonce: "0" }), execute: true },
+    });
+    expect(accepted.statusCode).toBe(202);
+    expect(await terminalJob(app, (accepted.json() as AnalysisJob).id)).toMatchObject({
+      status: "completed",
+    });
+  });
+
+  it("fails closed when live writes are enabled without an operator token", async () => {
+    const parsed = parseEnv({
+      ACTIONPROOF_MODE: "live",
+      NODE_ENV: "test",
+      OG_NETWORK: "galileo",
+      OG_CHAIN_ID: "16602",
+      OG_RPC_URL: "https://rpc.example.test",
+      OG_EXPLORER_URL: "https://chainscan.example.test",
+      OG_STORAGE_INDEXER_URL: "https://indexer.example.test",
+      OG_STORAGE_EXPLORER_URL: "https://storage.example.test",
+      OG_STORAGE_PRIVATE_KEY: `0x${"11".repeat(32)}`,
+      OG_COMPUTE_BASE_URL: "https://compute.example.test",
+      OG_COMPUTE_API_KEY: "test-only-key",
+      OG_COMPUTE_MODEL: "test-only-model",
+      VERIFIER_PRIVATE_KEY: `0x${"22".repeat(32)}`,
+      RELAYER_PRIVATE_KEY: `0x${"33".repeat(32)}`,
+      ACTIONPROOF_GUARD_ADDRESS: COUNTER,
+      ENABLE_LIVE_WRITES: "true",
+    });
+    const sandbox = createSandboxRuntime(parsed);
+    const app = await createApp({ ...sandbox, mode: "live" }, parsed);
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/jobs",
+      payload: { action: action({ nonce: "0" }), execute: true },
+    });
+
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toMatchObject({
+      error: { code: "OPERATOR_AUTH_NOT_CONFIGURED" },
+    });
+    const readiness = await app.inject({ method: "GET", url: "/ready" });
+    expect(readiness.statusCode).toBe(503);
+    expect(readiness.json()).toMatchObject({ ready: false, mode: "live" });
   });
 
   it("persists completed jobs and traces across store instances", async () => {

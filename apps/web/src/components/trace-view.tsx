@@ -279,7 +279,7 @@ export function TraceView({ id }: { id: string }) {
           </div>
         </section>
 
-        <section className="panel tamper-panel">
+        <section className="panel tamper-panel" id="tamper">
           <div>
             <span className="eyebrow">Adversarial check</span>
             <h2>Break the seal</h2>

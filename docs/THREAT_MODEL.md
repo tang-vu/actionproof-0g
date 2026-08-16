@@ -50,6 +50,10 @@ events harmless.
 All request bodies, route params, addresses, hex strings, integers, and model/network responses pass
 runtime schemas. The API applies body limits, CORS policy, security headers, request IDs, timeouts,
 and rate limits. The browser is untrusted and cannot select live adapters or supply verifier keys.
+Anonymous public deployments keep live writes disabled. When an operator deliberately enables live
+writes, `POST /v1/jobs` additionally requires a constant-time bearer-token comparison. A missing
+server token fails closed; authorization headers are redacted from logs and the UI does not persist
+the token. This limits opportunistic funded-service abuse but does not save a fully compromised host.
 
 ### Deterministic analysis
 
@@ -147,6 +151,7 @@ It has no general withdrawal function; failed target calls revert the whole tran
 | Target reenters executor                                      | Non-reentrancy guard rejects nested execution                           |
 | Downstream target reverts                                     | Execution transaction reverts; anchor remains, execution bit rolls back |
 | Mainnet config accidentally selected                          | Startup/write gates require explicit mainnet broadcast opt-in           |
+| Anonymous caller targets funded live API                      | Live write gate plus separate operator bearer token rejects the request |
 | ERC-8004 wallet differs or lookup fails while enforced        | Deterministic identity finding forces block                             |
 
 ## Out of scope / known limitations

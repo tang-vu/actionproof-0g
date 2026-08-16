@@ -21,7 +21,8 @@ accepts the Cancun target; the settings must match during explorer verification.
 - Origin: this Windows host, bound only to `127.0.0.1:3020` (Next.js) and `127.0.0.1:8787` (API)
 - Edge: dedicated named Cloudflare Tunnel `actionproof-0g`; no router port is opened
 - Supervisor: PM2 apps `actionproof-web`, `actionproof-api`, and `actionproof-tunnel`, saved for the
-  existing `PM2 Resurrect` startup task
+  existing `PM2 Resurrect` logon task. After a Windows reboot they resume when the owner signs in;
+  pre-login service startup is not claimed
 - Safety posture: live Galileo reads and existing live traces are public; anonymous paid writes and
   all mainnet broadcasts are disabled
 
@@ -38,12 +39,21 @@ pnpm host:build
 cloudflared tunnel --config .actionproof/cloudflare.yml ingress validate
 pnpm host:start
 pnpm host:status
+pnpm smoke:public -- --origin https://actionproof.example.com
 ```
 
 `configure:hosting` intentionally sets `ENABLE_LIVE_WRITES=false` and
-`ALLOW_MAINNET_BROADCAST=false`. For a supervised Galileo demo window only, set
-`ENABLE_LIVE_WRITES=true` locally, restart `actionproof-api`, perform the scenario, then restore the
-read-only configuration. Never expose an anonymously writable deployment backed by funded keys.
+`ALLOW_MAINNET_BROADCAST=false`, and imports public trace IDs from
+`docs/evidence/galileo-live.json`. For a supervised Galileo demo window only:
+
+1. place a random 32+ character `ACTIONPROOF_OPERATOR_TOKEN` in the ignored local `.env`;
+2. set `ENABLE_LIVE_WRITES=true` and restart `actionproof-api`;
+3. enter the token into the Analyze page's in-memory operator field and perform the scenario;
+4. restore `ENABLE_LIVE_WRITES=false`, remove the token when no longer needed, and restart the API;
+5. run `pnpm smoke:public` to prove anonymous writes are disabled again.
+
+Never use the same token for another service or expose an anonymously writable deployment backed by
+funded keys. The token authorizes use of the funded backend; it is not an onchain signing key.
 
 Cloudflare's current documentation for [locally managed tunnels](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/do-more-with-tunnels/local-management/create-local-tunnel/),
 [ordered path ingress](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/do-more-with-tunnels/local-management/configuration-file/),
@@ -69,6 +79,7 @@ Required server configuration:
 
 ```text
 ACTIONPROOF_MODE=live
+ACTIONPROOF_OPERATOR_TOKEN=<random 32+ character server-only token when API writes are enabled>
 OG_NETWORK=galileo
 OG_CHAIN_ID=16602
 OG_RPC_URL=<managed Galileo RPC; public development RPC for smoke only>
@@ -202,6 +213,17 @@ pnpm test:live
 the unauthenticated Compute `/models` catalog, and Storage indexer node selection on both official
 networks. Live API readiness additionally checks guard bytecode, the onchain authorized verifier,
 the configured model, and optional ERC-8004 wallet binding.
+
+For the deployed read-only judge surface, run:
+
+```bash
+pnpm smoke:public -- --origin https://actionproof.tangvu.dev
+```
+
+This performs only reads plus one deliberately rejected `POST /v1/jobs`. It checks HTTPS security
+headers, live runtime labeling, core integration probes, both preserved Galileo traces, public trace
+rendering, the synchronous `LIVE_WRITES_DISABLED` gate, and an unchanged trace count. It never calls
+paid Compute, uploads Storage data, or broadcasts a transaction.
 
 5. After explicitly enabling Galileo writes, run the full safe scenario and retain sanitized
    receipts. The smoke script never treats sandbox output as a live success.

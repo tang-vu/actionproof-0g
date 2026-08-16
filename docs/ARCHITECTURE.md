@@ -34,7 +34,10 @@ flowchart LR
 
 The browser never receives a private key or a Compute API key. It proposes an exact envelope,
 polls an asynchronous job, and renders receipts returned by the API. In live mode the API holds only
-server-side verifier/relayer/storage credentials supplied through its secret environment.
+server-side verifier/relayer/storage credentials supplied through its secret environment. A live
+API write also requires a separate operator bearer token. The supervised UI holds that token only
+in component memory; it is not placed in a public environment variable, URL, browser storage, or
+log.
 
 ## Repository boundaries
 
@@ -157,8 +160,9 @@ Selector and opcode matching are explicitly not complete semantic analysis.
 
 `ACTIONPROOF_MODE=live` constructs only real 0G adapters and fails startup/readiness when required
 configuration is absent. It never silently instantiates sandbox services. `ENABLE_LIVE_WRITES=true`
-is required for paid Storage and Chain writes. Mainnet additionally requires
-`ALLOW_MAINNET_BROADCAST=true`.
+is required for paid Storage and Chain writes. Live `POST /v1/jobs` then requires a constant-time
+match against the server-only `ACTIONPROOF_OPERATOR_TOKEN`; a missing server token fails closed.
+Mainnet additionally requires `ALLOW_MAINNET_BROADCAST=true`.
 
 Live `/ready` and `/v1/integrations` run cached, bounded, read-only probes rather than inferring
 availability from environment variables. They verify RPC chain/block access, the public Compute

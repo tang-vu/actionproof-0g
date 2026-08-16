@@ -16,6 +16,7 @@ undeployed and unauthorized.
 | Deployment-ready records and gates            | `packages/contracts/deployments`, `docs/DEPLOYMENT.md`, `.env.example` | Galileo/mainnet work can proceed without redesign                                    |
 | Real Galileo safe/block/tamper proof          | `docs/evidence/galileo-live.json`, ChainScan and StorageScan links     | Production adapters completed the full story; identifiers are independently openable |
 | Public evidence deployment                    | `https://actionproof.tangvu.dev`, `ecosystem.config.cjs`               | HTTPS judge access, live probes, real traces, and an explicit anonymous-write gate   |
+| Automated public proof                        | `pnpm smoke:public`, `scripts/public-smoke.ts`                         | No-spend check of HTTPS, integrations, traces, rendering, and write rejection        |
 
 Fast review:
 
@@ -24,6 +25,7 @@ pnpm install
 pnpm verify
 pnpm demo
 pnpm probe:0g
+pnpm smoke:public
 pnpm dev
 ```
 
@@ -76,16 +78,17 @@ Then open `http://127.0.0.1:3000`, or inspect the read-only live evidence deploy
 
 ## Technical execution, architecture, completeness, security — 20%
 
-| Requirement              | Concrete evidence                                                                              |
-| ------------------------ | ---------------------------------------------------------------------------------------------- |
-| AI is not an oracle      | `packages/core/src/policy.ts`; deterministic blocks win; UI architecture copy                  |
-| Cryptographic binding    | Core action/report hashes, EIP-712 shared types, matching Solidity type hashes                 |
-| Replay/tamper resistance | Sequential anchor nonces, executed digest map, chain/contract domain, tamper route/tests       |
-| Fail-closed boundaries   | Zod schemas, API job failure states, Router strict parse, Storage root mismatch errors         |
-| Minimal contract         | No custody system, proxy, tokenomics, DAO, marketplace, or arbitrary privileged execution      |
-| Security transparency    | `docs/THREAT_MODEL.md`, `SECURITY.md`, visible UI disclaimers, explicit limitations            |
-| Operational safety       | server-only secrets, mainnet double gate, dry-run deploy, recovery playbook                    |
-| Quality gates            | formatting, lint, TypeScript, unit/fuzz, build, browser journey, secret scan, dependency audit |
+| Requirement              | Concrete evidence                                                                               |
+| ------------------------ | ----------------------------------------------------------------------------------------------- |
+| AI is not an oracle      | `packages/core/src/policy.ts`; deterministic blocks win; UI architecture copy                   |
+| Cryptographic binding    | Core action/report hashes, EIP-712 shared types, matching Solidity type hashes                  |
+| Replay/tamper resistance | Sequential anchor nonces, executed digest map, chain/contract domain, tamper route/tests        |
+| Fail-closed boundaries   | Zod schemas, API job failure states, Router strict parse, Storage root mismatch errors          |
+| Minimal contract         | No custody system, proxy, tokenomics, DAO, marketplace, or arbitrary privileged execution       |
+| Security transparency    | `docs/THREAT_MODEL.md`, `SECURITY.md`, visible UI disclaimers, explicit limitations             |
+| Operational safety       | server-only secrets, mainnet double gate, dry-run deploy, recovery playbook                     |
+| Funded API abuse control | disabled public writes plus constant-time operator bearer authorization when writes are enabled |
+| Quality gates            | formatting, lint, TypeScript, unit/fuzz, build, browser journey, secret scan, dependency audit  |
 
 Architecture details and diagrams are in `docs/ARCHITECTURE.md` and the `/architecture` product page.
 
@@ -104,15 +107,14 @@ Architecture details and diagrams are in `docs/ARCHITECTURE.md` and the `/archit
 | Public HTTPS judge build                            | `https://actionproof.tangvu.dev`                                    |
 
 No users, partners, audits, or success metrics are invented. The repository and Galileo evidence are
-populated; hosted live-demo/video URLs remain placeholders pending external publishing authorization.
+populated and the live-demo URL is deployed; only the demo-video URL awaits external publication.
 
 ## Current external blockers
 
 These are not unfinished local engineering tasks:
 
-1. hosting accounts/domain if a public instance is desired;
-2. a reviewed, audited mainnet release plus funded mainnet roles and explicit broadcast approval;
-3. owner authorization to publish the demo video and mandatory social post.
+1. a reviewed, audited mainnet release plus funded mainnet roles and explicit broadcast approval;
+2. owner authorization to publish the demo video and mandatory social post.
 
 The repository owner authorized Galileo writes and supplied funded testnet roles. Mainnet remains
 locked; none of the completed Galileo work implies mainnet authorization.

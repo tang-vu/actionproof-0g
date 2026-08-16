@@ -22,6 +22,15 @@ const optionalUintString = z.preprocess(
     .regex(/^(?:0|[1-9][0-9]*)$/u)
     .optional(),
 );
+const optionalOperatorToken = z.preprocess(
+  (value) => (value === "" || value === undefined ? undefined : value),
+  z
+    .string()
+    .min(32, "ACTIONPROOF_OPERATOR_TOKEN must contain at least 32 characters")
+    .max(256)
+    .regex(/^[A-Za-z0-9._~-]+$/u, "ACTIONPROOF_OPERATOR_TOKEN contains unsafe characters")
+    .optional(),
+);
 const boolFromEnv = z.preprocess((value) => {
   if (typeof value === "boolean") return value;
   if (value === "true") return true;
@@ -45,6 +54,7 @@ const envSchema = z
     API_RATE_LIMIT_WINDOW: z.string().min(1).default("1 minute"),
     API_CORS_ORIGINS: z.string().default("http://127.0.0.1:3000,http://localhost:3000"),
     API_DATA_DIR: z.string().default(".actionproof-data"),
+    ACTIONPROOF_OPERATOR_TOKEN: optionalOperatorToken,
     OG_NETWORK: z.enum(["galileo", "mainnet"]).default("galileo"),
     OG_RPC_URL: optionalUrl,
     OG_CHAIN_ID: intFromEnv(16602),

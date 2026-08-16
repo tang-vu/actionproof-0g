@@ -26,8 +26,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  createJob(body: unknown): Promise<AnalysisJob> {
-    return request("/v1/jobs", { method: "POST", body: JSON.stringify(body) });
+  createJob(body: unknown, operatorToken?: string): Promise<AnalysisJob> {
+    return request("/v1/jobs", {
+      method: "POST",
+      body: JSON.stringify(body),
+      ...(operatorToken ? { headers: { Authorization: `Bearer ${operatorToken}` } } : {}),
+    });
   },
   getJob(id: string): Promise<AnalysisJob> {
     return request(`/v1/jobs/${encodeURIComponent(id)}`);

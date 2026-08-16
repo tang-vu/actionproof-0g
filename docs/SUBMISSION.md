@@ -27,8 +27,9 @@
 `https://chainscan-galileo.0g.ai/address/0x5f54d66a5dd8dceb1a5edcc638b31839810589bf`
 
 All three addresses above were independently checked for deployed bytecode and source verification.
-The live demo is published in read-only evidence mode; the video placeholder remains blank until
-that separate publishing action is authorized.
+The live demo is published in guided read-only evidence mode: its Allow, Block, and Break cards lead
+directly to the preserved Galileo traces and live tamper verifier. The video placeholder remains
+blank until that separate publishing action is authorized.
 
 ## Short summary
 
@@ -77,6 +78,7 @@ pnpm install
 pnpm --filter @actionproof/web exec playwright install chromium
 pnpm verify
 pnpm demo
+pnpm smoke:public
 cp .env.example .env
 pnpm dev
 ```
@@ -136,7 +138,8 @@ Publishing this post is an external action and requires owner approval.
 - JSON persistence and a single process are demo architecture, not horizontal production HA.
 - Reports are public; private evidence/encryption is not implemented.
 - The public host disables anonymous paid writes; it exposes live integration readiness and the real
-  safe/block traces. A supervised operator enables paid Galileo writes only for a demo window.
+  safe/block traces. A supervised operator must enable the write gate and supply a separate
+  server-validated bearer token for paid Galileo API writes.
 - Galileo Compute, Storage, deployment, safe execution, block anchor, and tamper evidence are live
   and recorded in `docs/evidence/galileo-live.json`. Mainnet remains undeployed and unauthorized.
 - ERC-8004 registration is not automated; ERC-7857 is deferred for the production-readiness reasons

@@ -46,6 +46,12 @@ const erc20Abi = [
 ] as const;
 
 type Scenario = "safe" | "dangerous";
+type RuntimeAccess = "checking" | "sandbox" | "read-only" | "operator" | "unavailable";
+
+const PRESERVED_TRACES: Record<Scenario, string | undefined> = {
+  safe: process.env.NEXT_PUBLIC_SAFE_TRACE_ID,
+  dangerous: process.env.NEXT_PUBLIC_BLOCK_TRACE_ID,
+};
 
 const initialSteps: JobStep[] = [
   { id: "preflight", label: "Deterministic policy", status: "pending" },
@@ -94,15 +100,28 @@ export function AnalysisConsole({ initialIssuedAt }: { initialIssuedAt: number }
   const [trace, setTrace] = useState<ActionTrace | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [nonceLoading, setNonceLoading] = useState(false);
-  const [readOnly, setReadOnly] = useState(false);
+  const [runtimeAccess, setRuntimeAccess] = useState<RuntimeAccess>(() =>
+    process.env.NEXT_PUBLIC_ACTIONPROOF_MODE === "live" ? "read-only" : "sandbox",
+  );
+  const [operatorToken, setOperatorToken] = useState("");
 
   const requester = account.address ?? DEMO_AGENT;
 
   useEffect(() => {
     void api
       .getIntegrations()
-      .then((status) => setReadOnly(status.mode === "live" && !status.writesEnabled))
-      .catch(() => undefined);
+      .then((status) => {
+        if (status.mode === "sandbox") {
+          setRuntimeAccess("sandbox");
+        } else if (!status.writesEnabled) {
+          setRuntimeAccess("read-only");
+        } else if (status.operatorAuthorization.configured) {
+          setRuntimeAccess("operator");
+        } else {
+          setRuntimeAccess("unavailable");
+        }
+      })
+      .catch(() => setRuntimeAccess("unavailable"));
   }, []);
 
   useEffect(() => {
@@ -160,11 +179,22 @@ export function AnalysisConsole({ initialIssuedAt }: { initialIssuedAt: number }
     setSubmitError(null);
     setTrace(null);
     try {
-      setJob(await api.createJob({ action, execute: true }));
+      setJob(
+        await api.createJob(
+          { action, execute: true },
+          runtimeAccess === "operator" ? operatorToken : undefined,
+        ),
+      );
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : "Could not create analysis job");
     }
-  }, [action]);
+  }, [action, operatorToken, runtimeAccess]);
+
+  const preservedTraceHref = PRESERVED_TRACES[scenario]
+    ? `/trace/${PRESERVED_TRACES[scenario]}`
+    : "/history";
+  const canSubmit =
+    runtimeAccess === "sandbox" || (runtimeAccess === "operator" && operatorToken.length > 0);
 
   return (
     <div className="console-grid">
@@ -229,31 +259,68 @@ export function AnalysisConsole({ initialIssuedAt }: { initialIssuedAt: number }
           safety guarantee.
         </div>
 
-        <button
-          className="primary-action"
-          type="button"
-          disabled={Boolean(busy) || nonceLoading || readOnly}
-          onClick={submit}
-        >
-          {readOnly
-            ? "Read-only hosted demo"
-            : nonceLoading
-              ? "Reading guard nonce…"
-              : busy
-                ? "Analyzing exact action…"
-                : "Analyze & attest"}
-          <span aria-hidden="true">→</span>
-        </button>
-        {readOnly && (
+        {runtimeAccess === "operator" && (
+          <label className="field operator-access">
+            <span>Operator authorization · held in memory only</span>
+            <input
+              type="password"
+              value={operatorToken}
+              autoComplete="off"
+              spellCheck={false}
+              placeholder="Enter the server operator token"
+              onChange={(event) => setOperatorToken(event.target.value)}
+            />
+          </label>
+        )}
+
+        {runtimeAccess === "read-only" ? (
+          <Link className="primary-action" href={preservedTraceHref}>
+            Inspect {scenario === "safe" ? "safe" : "blocked"} Galileo proof
+            <span aria-hidden="true">↗</span>
+          </Link>
+        ) : (
+          <button
+            className="primary-action"
+            type="button"
+            disabled={Boolean(busy) || nonceLoading || !canSubmit}
+            onClick={submit}
+          >
+            {runtimeAccess === "checking"
+              ? "Checking runtime gate…"
+              : runtimeAccess === "unavailable"
+                ? "Submission gate unavailable"
+                : nonceLoading
+                  ? "Reading guard nonce…"
+                  : busy
+                    ? "Analyzing exact action…"
+                    : "Analyze & attest"}
+            <span aria-hidden="true">→</span>
+          </button>
+        )}
+        {runtimeAccess === "read-only" && (
           <div className="callout neutral">
             <span className="callout-icon">i</span>
             <div>
               <strong>Public evidence mode</strong>
               <p>
-                Paid writes are disabled to protect server-held testnet balances.{" "}
-                <Link href="/history">Inspect the real Galileo safe and blocked traces</Link>.
+                Paid writes are disabled to protect server-held testnet balances. The button opens
+                the preserved real Galileo proof for this scenario; the tamper test remains live.
               </p>
             </div>
+          </div>
+        )}
+        {runtimeAccess === "operator" && (
+          <div className="callout neutral">
+            <span className="callout-icon">i</span>
+            <div>
+              <strong>Supervised Galileo writes</strong>
+              <p>The token is sent only in the authorization header and is never persisted.</p>
+            </div>
+          </div>
+        )}
+        {runtimeAccess === "unavailable" && (
+          <div className="inline-error prominent">
+            The runtime gate is unavailable or live operator authorization is not configured.
           </div>
         )}
         {submitError && <div className="inline-error prominent">{submitError}</div>}
@@ -289,7 +356,9 @@ export function AnalysisConsole({ initialIssuedAt }: { initialIssuedAt: number }
             </div>
             <h3>No proof yet</h3>
             <p>
-              Select a scenario and submit the exact envelope. No stage is implied until it runs.
+              {runtimeAccess === "read-only"
+                ? "Choose a scenario and open its preserved Galileo proof. No new run is implied."
+                : "Select a scenario and submit the exact envelope. No stage is implied until it runs."}
             </p>
           </div>
         )}

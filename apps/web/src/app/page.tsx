@@ -2,6 +2,9 @@ import Link from "next/link";
 
 import { IntegrationStatus } from "../components/integration-status";
 
+const safeTraceId = process.env.NEXT_PUBLIC_SAFE_TRACE_ID;
+const blockTraceId = process.env.NEXT_PUBLIC_BLOCK_TRACE_ID;
+
 const layers: Array<readonly [string, string, string]> = [
   [
     "01",
@@ -137,28 +140,51 @@ export default function HomePage() {
           <h2>Allow. Block. Break.</h2>
         </div>
         <div className="story-grid">
-          <article className="allow-story">
-            <span>01 / ALLOW</span>
-            <h3>A harmless counter action</h3>
-            <p>
-              Simulated, assessed, stored, anchored, and executed against a valueless demo contract.
-            </p>
-          </article>
-          <article className="block-story">
-            <span>02 / BLOCK</span>
-            <h3>An unlimited token approval</h3>
-            <p>
-              A deterministic critical finding overrides optimism and the executor refuses the call.
-            </p>
-          </article>
-          <article className="tamper-story">
-            <span>03 / BREAK</span>
-            <h3>One mutated byte</h3>
-            <p>
-              Change calldata, root, target, or nonce and the signature no longer seals the
-              evidence.
-            </p>
-          </article>
+          <Link
+            aria-label="Inspect preserved proof for the safe action"
+            className="story-link"
+            href={safeTraceId ? `/trace/${safeTraceId}` : "/analyze"}
+          >
+            <article className="allow-story">
+              <span>01 / ALLOW</span>
+              <h3>A harmless counter action</h3>
+              <p>
+                Simulated, assessed, stored, anchored, and executed against a valueless demo
+                contract.
+              </p>
+              <strong>Inspect preserved proof ↗</strong>
+            </article>
+          </Link>
+          <Link
+            aria-label="Inspect blocked proof for the unlimited approval"
+            className="story-link"
+            href={blockTraceId ? `/trace/${blockTraceId}` : "/analyze"}
+          >
+            <article className="block-story">
+              <span>02 / BLOCK</span>
+              <h3>An unlimited token approval</h3>
+              <p>
+                A deterministic critical finding overrides optimism and the executor refuses the
+                call.
+              </p>
+              <strong>Inspect blocked proof ↗</strong>
+            </article>
+          </Link>
+          <Link
+            aria-label="Run the live tamper check on preserved evidence"
+            className="story-link"
+            href={safeTraceId ? `/trace/${safeTraceId}#tamper` : "/analyze"}
+          >
+            <article className="tamper-story">
+              <span>03 / BREAK</span>
+              <h3>One mutated byte</h3>
+              <p>
+                Change calldata, root, target, or nonce and the signature no longer seals the
+                evidence.
+              </p>
+              <strong>Run the live tamper check ↗</strong>
+            </article>
+          </Link>
         </div>
       </section>
 

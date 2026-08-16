@@ -683,6 +683,20 @@ code {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--surface);
+  transition:
+    border-color 180ms ease,
+    transform 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.story-link:hover article {
+  transform: translateY(-3px);
+  border-color: rgba(98, 231, 225, 0.35);
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.24);
+}
+
+.story-link:focus-visible {
+  border-radius: var(--radius);
 }
 
 .story-grid h3 {
@@ -696,6 +710,17 @@ code {
 .story-grid p {
   color: var(--muted);
   font-size: 13px;
+}
+
+.story-grid article > strong {
+  display: block;
+  margin-top: 20px;
+  color: var(--cyan);
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .allow-story {
@@ -999,6 +1024,26 @@ code {
   color: var(--text);
   font-size: 13px;
   line-height: 1.5;
+}
+
+.operator-access {
+  margin-top: 17px;
+}
+
+.operator-access input {
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 7px;
+  background: #090d0f;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.operator-access input:focus {
+  border-color: rgba(98, 231, 225, 0.5);
+  outline: none;
 }
 
 .field textarea:focus {

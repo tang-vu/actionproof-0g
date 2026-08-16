@@ -3,6 +3,7 @@ import helmet from "@fastify/helmet";
 import rateLimit from "@fastify/rate-limit";
 import { actionRequestSchema, bytes32Schema } from "@actionproof/core";
 import Fastify, { type FastifyInstance, type FastifyServerOptions } from "fastify";
+import { createHash, timingSafeEqual } from "node:crypto";
 import { isAddress } from "viem";
 import { z, ZodError } from "zod";
 
@@ -47,6 +48,14 @@ export interface BuildAppOptions {
 
 function notFound(resource: string): never {
   throw new ApiError(404, "NOT_FOUND", `${resource} was not found`);
+}
+
+function operatorTokenMatches(authorization: string | undefined, expected: string): boolean {
+  if (!authorization?.startsWith("Bearer ")) return false;
+  const supplied = authorization.slice("Bearer ".length);
+  const suppliedDigest = createHash("sha256").update(supplied).digest();
+  const expectedDigest = createHash("sha256").update(expected).digest();
+  return timingSafeEqual(suppliedDigest, expectedDigest);
 }
 
 function errorEnvelope(error: unknown, requestId: string) {
@@ -133,7 +142,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   await app.register(cors, {
     credentials: false,
     methods: ["GET", "POST", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Accept"],
+    allowedHeaders: ["Content-Type", "Accept", "Authorization"],
     origin(origin, callback) {
       if (!origin || config.corsOrigins.has("*") || config.corsOrigins.has(origin)) {
         callback(null, true);
@@ -196,8 +205,10 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     const identityAvailable =
       config.OG_AGENTIC_ID === undefined ||
       services.some((service) => service.id === "identity" && service.status === "available");
-    const ready =
-      (runtime.mode === "sandbox" || config.liveWriteEnabled) && coreAvailable && identityAvailable;
+    const submissionGateReady =
+      runtime.mode === "sandbox" ||
+      (config.liveWriteEnabled && Boolean(config.ACTIONPROOF_OPERATOR_TOKEN));
+    const ready = submissionGateReady && coreAvailable && identityAvailable;
     if (!ready) reply.code(503);
     return {
       ready,
@@ -216,6 +227,10 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   app.get("/v1/integrations", async () => ({
     mode: runtime.mode,
     writesEnabled: runtime.mode === "live" && config.liveWriteEnabled,
+    operatorAuthorization: {
+      required: runtime.mode === "live" && config.liveWriteEnabled,
+      configured: Boolean(config.ACTIONPROOF_OPERATOR_TOKEN),
+    },
     network: {
       name: config.OG_NETWORK === "galileo" ? "0G Galileo Testnet" : "0G Mainnet",
       chainId: config.OG_CHAIN_ID,
@@ -239,12 +254,28 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   });
 
   app.post("/v1/jobs", async (request, reply) => {
-    if (runtime.mode === "live" && !config.liveWriteEnabled) {
-      throw new ApiError(
-        503,
-        "LIVE_WRITES_DISABLED",
-        "This public deployment is read-only; live analysis requires an operator to enable the network safety gate",
-      );
+    if (runtime.mode === "live") {
+      if (!config.liveWriteEnabled) {
+        throw new ApiError(
+          503,
+          "LIVE_WRITES_DISABLED",
+          "This public deployment is read-only; live analysis requires an operator to enable the network safety gate",
+        );
+      }
+      if (!config.ACTIONPROOF_OPERATOR_TOKEN) {
+        throw new ApiError(
+          503,
+          "OPERATOR_AUTH_NOT_CONFIGURED",
+          "Live API submissions remain disabled until the operator authorization gate is configured",
+        );
+      }
+      if (!operatorTokenMatches(request.headers.authorization, config.ACTIONPROOF_OPERATOR_TOKEN)) {
+        throw new ApiError(
+          401,
+          "OPERATOR_AUTH_REQUIRED",
+          "A valid operator authorization token is required for live analysis",
+        );
+      }
     }
     const body = createJobSchema.parse(request.body);
     const job = await orchestrator.createJob(body);
