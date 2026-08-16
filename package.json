@@ -17,6 +17,7 @@
     "demo": "pnpm build:libs && pnpm --filter @actionproof/api demo:sandbox",
     "demo:live": "pnpm build:libs && pnpm --filter @actionproof/api demo:live",
     "bootstrap:testnet": "pnpm --filter @actionproof/api bootstrap:testnet",
+    "register:agent": "pnpm --filter @actionproof/api register:agent",
     "configure:hosting": "tsx scripts/configure-hosting.ts",
     "host:build": "pnpm build:libs && pnpm --filter @actionproof/api build && pnpm --filter @actionproof/web build",
     "host:start": "pm2 start ecosystem.config.cjs --env production && pm2 save",

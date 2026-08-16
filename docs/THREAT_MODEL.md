@@ -100,6 +100,10 @@ The registry owner, metadata URI, wallet, registry address, chain, and lookup ti
 canonical report. A stale/malicious metadata URI cannot change the wallet comparison or clear any
 policy finding. Registry compromise, wallet rotation between assessment and execution, and metadata
 availability remain trust and freshness risks; short action deadlines limit but do not remove them.
+The separately gated Galileo registration tool requires the relayer key to control the exact
+configured action-agent wallet and dry-runs by default. Registration establishes identity ownership
+and discoverability only; ActionProof does not treat the NFT or its self-authored metadata as a
+security assessment, reputation score, or capability proof.
 
 ### Verifier and relayer
 

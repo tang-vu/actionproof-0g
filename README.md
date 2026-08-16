@@ -156,9 +156,10 @@ production adapters on 2026-08-15:
 ActionProof optionally resolves an official ERC-8004 `agentId` from the published Identity Registry,
 reads `ownerOf`, `getAgentWallet`, and `tokenURI`, and binds that evidence into the canonical report.
 The registered wallet must equal the exact action-agent address or deterministic policy blocks the
-action. Resolution is read-only; registration is deliberately outside the automatic flow. ERC-7857
-remains deferred because its current production oracle/re-encryption path is not suitable for this
-firewall's critical path.
+action. Resolution is read-only. A separate Galileo-only, dry-run-first `pnpm register:agent` command
+can create the identity after explicit authorization; registration is never part of action analysis.
+ERC-7857 remains deferred because its current production oracle/re-encryption path is not suitable
+for this firewall's critical path.
 
 ## Quick start
 

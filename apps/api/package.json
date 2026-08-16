@@ -12,6 +12,7 @@
     "test:live": "tsx src/live-smoke.ts --check-only",
     "readiness:live": "tsx src/readiness-smoke.ts",
     "smoke:compute": "tsx src/compute-smoke.ts",
+    "register:agent": "tsx src/register-agentic-id.ts",
     "bootstrap:testnet": "tsx src/bootstrap-testnet-env.ts",
     "demo:sandbox": "tsx src/demo.ts",
     "demo:live": "tsx src/live-smoke.ts"

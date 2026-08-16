@@ -195,6 +195,34 @@ forge verify-contract <GUARD_ADDRESS> src/ActionProofGuard.sol:ActionProofGuard 
 Supply constructor arguments when requested. Repeat for demo contracts. Open each ChainScan page,
 confirm source/ABI/settings, and add direct links to the deployment record and README.
 
+## Optional ERC-8004 registration on Galileo
+
+The critical path only reads ERC-8004. Registration is a separate owner-authorized operation using
+the exact action-agent/relayer wallet. The command refuses Mainnet, checks official registry code,
+checks the wallet match and gas balance, simulates first, and does not broadcast by default:
+
+```powershell
+pnpm register:agent
+$env:AGENTIC_ID_BROADCAST_CONFIRM="REGISTER_AGENTIC_ID_GALILEO"
+pnpm register:agent
+Remove-Item Env:AGENTIC_ID_BROADCAST_CONFIRM
+```
+
+After the first receipt returns the global `agentId`, publish the standards-compliant registration
+file at `https://actionproof.tangvu.dev/.well-known/agent-registration.json`, then simulate and set
+its URI:
+
+```powershell
+pnpm register:agent -- --agent-id <AGENT_ID>
+$env:AGENTIC_ID_BROADCAST_CONFIRM="REGISTER_AGENTIC_ID_GALILEO"
+pnpm register:agent -- --agent-id <AGENT_ID>
+Remove-Item Env:AGENTIC_ID_BROADCAST_CONFIRM
+```
+
+Record both receipts without keys, set `OG_AGENTIC_ID`, and require live readiness to report the
+registered wallet matches `ACTIONPROOF_AGENT_ADDRESS`. ERC-8004 registration proves ownership and
+discoverability, not the safety or correctness of the advertised agent.
+
 ## Compute and Storage readiness
 
 1. At `https://pc.testnet.0g.ai`, connect a low-value wallet, deposit testnet 0G into the Router
