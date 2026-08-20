@@ -55,13 +55,12 @@ jobs:
       - name: Install Chromium for the critical journey
         run: pnpm --filter @actionproof/web exec playwright install --with-deps chromium
 
-      - name: Verify deterministic build
-        run: pnpm verify
+      - name: Apply checksum-locked PostgreSQL migrations
+        run: pnpm db:migrate
 
-      - name: Verify PostgreSQL migrations and lease/outbox semantics
+      - name: Verify deterministic build and PostgreSQL semantics
         run: |
-          pnpm db:migrate
-          pnpm --filter @actionproof/api test:postgres
+          pnpm verify
 
       - name: Upload browser failure evidence
         if: failure()
