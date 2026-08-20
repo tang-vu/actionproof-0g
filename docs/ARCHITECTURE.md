@@ -92,6 +92,16 @@ Preflight never calls 0G Compute, uploads to Storage, signs an attestation, pers
 transaction, or executes the target. It is an early integration gate, not proof. Only an unchanged
 envelope that enters the full pipeline can produce the evidence and enforcement described below.
 
+Production deployments can persist jobs/traces in PostgreSQL and claim work through leased
+`SKIP LOCKED` queues. Lease heartbeats prevent duplicate workers; an interrupted external stage is
+marked for reconciliation rather than automatically rebroadcast. Tenant-authenticated terminal jobs
+and webhook events commit in one database transaction before an independent signed-delivery worker
+runs. Local deployments retain the atomic JSON fallback and expose that distinction in status.
+
+Simulation enrichment commits target code hash/block provenance, EIP-1967 proxy slots, and an
+optional bounded state-footprint summary. Provider-specific KMS/HSM operations remain behind a
+remote typed-data signer; the API independently recovers the configured verifier from every result.
+
 ## Evidence construction
 
 The API validates the action, simulates from the guard address (the actual downstream `msg.sender`),

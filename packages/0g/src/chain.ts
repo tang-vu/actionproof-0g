@@ -16,6 +16,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import {
   getAddress,
   hashTypedData,
+  keccak256,
   recoverTypedDataAddress,
   toHex,
   type Account,
@@ -32,17 +33,20 @@ import { z } from "zod";
 import { actionProofGuardAbi, type GuardAttestation } from "./guard-abi.js";
 import type { AnchorVerification, ChainAdapter, ChainSubmission, Clock } from "./interfaces.js";
 import { systemClock } from "./interfaces.js";
+import { LocalAttestationSigner, type AttestationSigner } from "./signers.js";
 
 export interface ZgChainConfig {
   publicClient: PublicClient<Transport, Chain>;
   walletClient: WalletClient<Transport, Chain, Account>;
   relayerAccount: Account;
-  verifierAccount: LocalAccount;
+  verifierAccount?: LocalAccount;
+  verifierSigner?: AttestationSigner;
   guardAddress: Address;
   explorerBaseUrl?: string;
   explorerApiUrl?: string;
   fetchFn?: typeof fetch;
   sourceVerificationTimeoutMs?: number;
+  enableStateDiff?: boolean;
   clock?: Clock;
 }
 
@@ -63,6 +67,46 @@ const explorerSourceResponseSchema = z
     ]),
   })
   .passthrough();
+
+const EIP1967_SLOTS = {
+  implementation: "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc",
+  admin: "0xb53127684a568b3173ae13b9f8a6016e019b817850b5d6103ade098d235090d6103",
+  beacon: "0xa3f0ad74e5423aebfd80d3ef4346578335a9a72aeaee59ff6cb3582b35133d50",
+} as const satisfies Record<string, Hex>;
+
+function slotAddress(value: Hex | undefined): Address | undefined {
+  if (!value || value === "0x") return undefined;
+  const candidate = `0x${value.slice(-40)}` as Address;
+  return /^0x0{40}$/u.test(candidate) ? undefined : getAddress(candidate);
+}
+
+function stateDiffSummary(value: unknown): {
+  accountsChanged: number;
+  storageSlotsChanged: number;
+} {
+  if (typeof value !== "object" || value === null)
+    return { accountsChanged: 0, storageSlotsChanged: 0 };
+  const envelope = value as Record<string, unknown>;
+  const pre =
+    typeof envelope.pre === "object" && envelope.pre !== null
+      ? (envelope.pre as Record<string, unknown>)
+      : {};
+  const post =
+    typeof envelope.post === "object" && envelope.post !== null
+      ? (envelope.post as Record<string, unknown>)
+      : {};
+  const accounts = new Set([...Object.keys(pre), ...Object.keys(post)]);
+  let storageSlotsChanged = 0;
+  for (const address of accounts) {
+    const before = pre[address] as { storage?: Record<string, unknown> } | undefined;
+    const after = post[address] as { storage?: Record<string, unknown> } | undefined;
+    storageSlotsChanged += new Set([
+      ...Object.keys(before?.storage ?? {}),
+      ...Object.keys(after?.storage ?? {}),
+    ]).size;
+  }
+  return { accountsChanged: accounts.size, storageSlotsChanged };
+}
 
 function guardAttestation(attestation: Attestation): GuardAttestation {
   return toTypedAttestation(attestation);
@@ -100,13 +144,19 @@ export class ZgChainAdapter implements ChainAdapter {
   readonly mode = "0g" as const;
   readonly #config: ZgChainConfig;
   readonly #clock: Clock;
+  readonly #verifierSigner: AttestationSigner;
 
   constructor(config: ZgChainConfig) {
+    if (!config.verifierSigner && !config.verifierAccount) {
+      throw new TypeError("A verifier signer is required");
+    }
     this.#config = {
       ...config,
       guardAddress: getAddress(config.guardAddress),
     };
     this.#clock = config.clock ?? systemClock;
+    this.#verifierSigner =
+      config.verifierSigner ?? new LocalAttestationSigner(config.verifierAccount as LocalAccount);
   }
 
   async simulateAction(input: ActionRequest): Promise<SimulationResult> {
@@ -145,6 +195,79 @@ export class ZgChainAdapter implements ChainAdapter {
         }),
         this.#config.publicClient.request({ method: "eth_estimateGas", params: [request] }),
       ]);
+      let targetAnalysis: SimulationResult["targetAnalysis"];
+      try {
+        const [blockNumber, implementationSlot, adminSlot, beaconSlot] = await Promise.all([
+          this.#config.publicClient.getBlockNumber(),
+          this.#config.publicClient.getStorageAt({
+            address: action.target,
+            slot: EIP1967_SLOTS.implementation,
+          }),
+          this.#config.publicClient.getStorageAt({
+            address: action.target,
+            slot: EIP1967_SLOTS.admin,
+          }),
+          this.#config.publicClient.getStorageAt({
+            address: action.target,
+            slot: EIP1967_SLOTS.beacon,
+          }),
+        ]);
+        const implementation = slotAddress(implementationSlot);
+        const admin = slotAddress(adminSlot);
+        const beacon = slotAddress(beaconSlot);
+        const proxy =
+          implementation || admin || beacon
+            ? {
+                standard: "EIP-1967" as const,
+                ...(implementation ? { implementation } : {}),
+                ...(admin ? { admin } : {}),
+                ...(beacon ? { beacon } : {}),
+              }
+            : undefined;
+        targetAnalysis = {
+          codeHash: keccak256(bytecode as Hex),
+          blockNumber: blockNumber.toString(),
+          ...(proxy ? { proxy } : {}),
+        };
+      } catch {
+        // Enrichment is provenance only; an unavailable storage-slot method must not rewrite
+        // the independently successful eth_call result.
+      }
+      let stateDiff: SimulationResult["stateDiff"] = {
+        status: "disabled",
+        note: "debug_traceCall state diff is disabled by deployment configuration.",
+      };
+      if (this.#config.enableStateDiff) {
+        try {
+          const debugRequest = this.#config.publicClient.request as unknown as (args: {
+            method: string;
+            params: unknown[];
+          }) => Promise<unknown>;
+          const rawDiff = await debugRequest({
+            method: "debug_traceCall",
+            params: [
+              request,
+              "latest",
+              { tracer: "prestateTracer", tracerConfig: { diffMode: true } },
+            ],
+          });
+          const summary = stateDiffSummary(rawDiff);
+          stateDiff = {
+            status: "available",
+            ...summary,
+            note: "Summarized from debug_traceCall prestateTracer diff mode; raw state was not retained.",
+          };
+        } catch (error) {
+          const message = errorMessage(error).toLowerCase();
+          stateDiff = {
+            status:
+              message.includes("method") || message.includes("unsupported")
+                ? "unsupported"
+                : "failed",
+            note: errorMessage(error).slice(0, 500),
+          };
+        }
+      }
       return simulationResultSchema.parse({
         success: true,
         networkChainId: chainId,
@@ -153,6 +276,8 @@ export class ZgChainAdapter implements ChainAdapter {
         gasEstimate: BigInt(gas).toString(),
         returnData,
         effects: [],
+        ...(targetAnalysis ? { targetAnalysis } : {}),
+        stateDiff,
         observedAt: this.#clock().toISOString(),
       });
     } catch (error) {
@@ -201,12 +326,7 @@ export class ZgChainAdapter implements ChainAdapter {
   async signAttestation(input: Attestation): Promise<Hex> {
     const attestation = attestationSchema.parse(input);
     const chainId = await this.#assertChain(attestation);
-    return this.#config.verifierAccount.signTypedData({
-      domain: actionProofDomain(chainId, this.#config.guardAddress),
-      types: actionAttestationTypes,
-      primaryType: "ActionAttestation",
-      message: guardAttestation(attestation),
-    });
+    return this.#verifierSigner.sign(attestation, chainId, this.#config.guardAddress);
   }
 
   async anchorAttestation(input: Attestation, signature: Hex): Promise<ChainSubmission> {

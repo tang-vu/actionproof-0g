@@ -55,6 +55,20 @@ pnpm smoke:public -- --origin https://actionproof.example.com
 Never use the same token for another service or expose an anonymously writable deployment backed by
 funded keys. The token authorizes use of the funded backend; it is not an onchain signing key.
 
+### Production control-plane promotion
+
+The current public judge host honestly reports `atomic-json` persistence and keeps writes disabled.
+Do not label it horizontally available. A production promotion requires:
+
+1. provision TLS PostgreSQL with backup/restore, point-in-time recovery, and least-privilege roles;
+2. set secret-managed `DATABASE_URL`, run `pnpm db:migrate`, then verify queue/outbox health;
+3. configure hashed tenants and quotas instead of sharing the legacy operator token;
+4. move verifier signing to the reviewed remote signer boundary and verify onchain signer equality;
+5. exercise `execute: false`, worker crash reconciliation, webhook replay/deduplication, and rollback;
+6. complete the independent audit scope before valuable-asset use.
+
+Exact configuration and rollout steps are in [PRODUCTION_READINESS.md](PRODUCTION_READINESS.md).
+
 Cloudflare's current documentation for [locally managed tunnels](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/do-more-with-tunnels/local-management/create-local-tunnel/),
 [ordered path ingress](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/do-more-with-tunnels/local-management/configuration-file/),
 and [Windows service operation](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/do-more-with-tunnels/local-management/as-a-service/windows/)

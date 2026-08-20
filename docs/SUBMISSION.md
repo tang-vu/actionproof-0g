@@ -43,6 +43,11 @@ supported calldata, simulates from the guard, checks nonce/identity/policy, and 
 pass/review/block disposition without paid services or writes. An unchanged eligible envelope can
 then enter an authorized full assessment.
 
+For operated deployments, the same contract now has a typed SDK, PostgreSQL lease queue,
+transactional signed webhook outbox, hashed tenant credentials and quota, modular policy packs,
+proxy/state-footprint analysis, Prometheus metrics, and a remote KMS/HSM signer boundary. These are
+production-readiness capabilities, not claims that the public read-only host is HA or audited.
+
 For every proposed action it runs reproducible policy checks, simulates the downstream call, obtains
 a strict structured assessment through 0G Compute, uploads the canonical evidence to 0G Storage, and
 signs an EIP-712 attestation binding the exact action and report. An ActionProofGuard contract on 0G

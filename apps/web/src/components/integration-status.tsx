@@ -52,6 +52,14 @@ export function IntegrationStatus() {
               {status.capabilities.instantPreflight ? "Available · no spend" : "Unavailable"}
             </strong>
           </div>
+          <div className="network-line">
+            <span>Persistence</span>
+            <strong>
+              {status.capabilities.postgresPersistence
+                ? "PostgreSQL · durable queue"
+                : "Atomic host store · durable restart"}
+            </strong>
+          </div>
           <ul className="service-list">
             {status.services.map((service) => (
               <li key={service.id}>

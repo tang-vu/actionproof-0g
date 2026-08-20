@@ -18,6 +18,7 @@ undeployed and unauthorized.
 | Public evidence deployment                    | `https://actionproof.tangvu.dev`, `ecosystem.config.cjs`               | HTTPS judge access, live probes, real traces, and an explicit anonymous-write gate   |
 | Automated public proof                        | `pnpm smoke:public`, `scripts/public-smoke.ts`                         | No-spend check of HTTPS, integrations, traces, rendering, and write rejection        |
 | Developer-ready transaction preflight         | `POST /v1/preflight`, `/developers`, `docs/INTEGRATION.md`             | Arbitrary exact actions receive read-only simulation and machine-readable policy     |
+| Production control plane                      | PostgreSQL queue/outbox, tenant auth, SDK, metrics, remote signer      | Product architecture extends beyond a single hackathon execution path                |
 
 Fast review:
 
@@ -93,6 +94,7 @@ Then open `http://127.0.0.1:3000`, or inspect the read-only live evidence deploy
 | Operational safety       | server-only secrets, mainnet double gate, dry-run deploy, recovery playbook                     |
 | Funded API abuse control | disabled public writes plus constant-time operator bearer authorization when writes are enabled |
 | No-spend public utility  | dedicated preflight route, explicit capability contract, and live smoke assertion               |
+| Durable product boundary | leased PostgreSQL work, transactional webhooks, quotas, reconciliation, and signer isolation    |
 | Quality gates            | formatting, lint, TypeScript, unit/fuzz, build, browser journey, secret scan, dependency audit  |
 
 Architecture details and diagrams are in `docs/ARCHITECTURE.md` and the `/architecture` product page.

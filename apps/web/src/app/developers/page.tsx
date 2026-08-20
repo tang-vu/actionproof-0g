@@ -26,6 +26,15 @@ const integrationSteps = [
   ],
 ] as const;
 
+const productionCapabilities = [
+  ["Durable work", "PostgreSQL leases, heartbeats, fail-closed crash reconciliation"],
+  ["Tenant boundary", "Hashed API keys, constant-time auth, per-tenant quota"],
+  ["Event delivery", "Transactional HMAC webhook outbox with bounded retry"],
+  ["Policy packs", "Token, NFT, administration, proxy, and asset-movement modules"],
+  ["Deep simulation", "Code provenance, EIP-1967 slots, optional state footprint"],
+  ["Key isolation", "Provider-neutral KMS/HSM signer with signature recovery"],
+] as const;
+
 const previewExample = `// Call server-side. Browser origins must be explicitly allowlisted.
 const result = await fetch("https://actionproof.tangvu.dev/v1/preflight", {
   method: "POST",
@@ -150,6 +159,26 @@ export default function DevelopersPage() {
             pipeline creates 0G Compute, Storage, and Chain evidence.
           </div>
         </article>
+      </section>
+
+      <section className="production-surface panel">
+        <div className="production-surface-heading">
+          <span className="eyebrow">Production control plane</span>
+          <h2>Every boundary is explicit, inspectable, and independently operable.</h2>
+          <p>
+            Capabilities are opt-in and status reports what is actually configured. The public host
+            remains read-only; self-hosted operators can promote the same API contract deliberately.
+          </p>
+        </div>
+        <div className="production-capability-grid">
+          {productionCapabilities.map(([title, detail]) => (
+            <article key={title}>
+              <span aria-hidden="true" />
+              <h3>{title}</h3>
+              <p>{detail}</p>
+            </article>
+          ))}
+        </div>
       </section>
 
       <section className="integration-principles panel">

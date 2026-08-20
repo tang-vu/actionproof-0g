@@ -69,6 +69,7 @@ export interface PreflightPreview {
     maxRequestTtlMs: number;
     targetAllowlistEnforced: boolean;
     deniedSpenderCount: number;
+    packs: string[];
   };
   analysisPerformed: ["calldata-inspection", "chain-simulation", "deterministic-policy"];
   checkedAt: string;
@@ -78,6 +79,22 @@ export interface PreflightPreview {
 export interface StoredJob extends AnalysisJob {
   action: ActionRequest;
   execute: boolean;
+  tenantId?: string;
+}
+
+export interface QueueStats {
+  pending: number;
+  leased: number;
+  exhausted: number;
+}
+
+export interface WebhookOutboxItem {
+  id: string;
+  tenantId: string;
+  jobId: string;
+  event: "job.completed" | "job.failed";
+  createdAt: string;
+  attempts: number;
 }
 
 export interface VerificationCheck {
@@ -122,6 +139,6 @@ export interface PersistedState {
 }
 
 export function publicJob(job: StoredJob): AnalysisJob {
-  const { action: _action, execute: _execute, ...result } = job;
+  const { action: _action, execute: _execute, tenantId: _tenantId, ...result } = job;
   return result;
 }

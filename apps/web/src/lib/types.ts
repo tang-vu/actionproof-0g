@@ -58,6 +58,7 @@ export interface PreflightPreview {
     maxRequestTtlMs: number;
     targetAllowlistEnforced: boolean;
     deniedSpenderCount: number;
+    packs: string[];
   };
   analysisPerformed: ["calldata-inspection", "chain-simulation", "deterministic-policy"];
   checkedAt: string;
@@ -104,11 +105,18 @@ export interface IntegrationStatus {
     instantPreflight: boolean;
     fullAttestation: boolean;
     publicVerification: boolean;
+    durableQueue: boolean;
+    postgresPersistence: boolean;
   };
   operatorAuthorization: { required: boolean; configured: boolean };
+  tenancy: {
+    configuredTenants: number;
+    authentication: "sha256-api-key" | "legacy-operator";
+    durableWebhooks: boolean;
+  };
   network: { name: string; chainId: number };
   services: Array<{
-    id: "chain" | "compute" | "storage" | "identity";
+    id: "chain" | "compute" | "storage" | "identity" | "signer";
     name: string;
     status: "available" | "unavailable" | "sandbox";
     detail: string;

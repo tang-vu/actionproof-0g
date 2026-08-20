@@ -19,6 +19,7 @@ import { ZgChainAdapter } from "./chain.js";
 import { actionProofGuardAbi } from "./guard-abi.js";
 import { probePublicNetwork, type PublicProbeDependencies } from "./readiness.js";
 import { SandboxChainAdapter, SandboxComputeAdapter, SandboxStorageAdapter } from "./sandbox.js";
+import { LocalAttestationSigner, RemoteAttestationSigner } from "./signers.js";
 import {
   ZgStorageAdapter,
   calculateZgMerkleRoot,
@@ -46,6 +47,32 @@ const action: ActionRequest = {
   issuedAt: now - 10,
   expiresAt: now + 600,
 };
+
+describe("attestation signer boundary", () => {
+  it("verifies every signature returned by a remote KMS/HSM gateway", async () => {
+    const account = privateKeyToAccount(`0x${"42".repeat(32)}`);
+    const local = new LocalAttestationSigner(account);
+    const attestation = createAttestation({
+      action,
+      reportRoot: `0x${"11".repeat(32)}`,
+      reportHash: `0x${"22".repeat(32)}`,
+      verdict: "allow",
+    });
+    const expected = await local.sign(attestation, 16602, target);
+    const remote = new RemoteAttestationSigner({
+      address: account.address,
+      endpoint: "https://signer.example.test/v1/sign",
+      token: "test-only-remote-signer-token-32-characters",
+      fetchFn: async () =>
+        new Response(JSON.stringify({ signature: expected }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+    });
+
+    await expect(remote.sign(attestation, 16602, target)).resolves.toBe(expected);
+  });
+});
 
 const simulation: SimulationResult = {
   success: true,
@@ -546,6 +573,9 @@ describe("production chain adapter wiring", () => {
     const publicClient = {
       getChainId: async () => 16602,
       getBytecode: async () => "0x6000",
+      getBlockNumber: async () => 123n,
+      getStorageAt: async ({ slot }: { slot: string }) =>
+        slot.startsWith("0x360894") ? (`0x${target.slice(2).padStart(64, "0")}` as Hex) : undefined,
       request: async (request: { method: string; params?: readonly unknown[] }) => {
         rpcRequests.push(request);
         return request.method === "eth_estimateGas" ? "0xb0" : "0x";
@@ -595,6 +625,12 @@ describe("production chain adapter wiring", () => {
     const simulationResult = await adapter.simulateAction(action);
     expect(simulationResult.gasEstimate).toBe("176");
     expect(simulationResult.targetVerification).toBe("verified");
+    expect(simulationResult.targetAnalysis).toMatchObject({
+      codeHash: keccak256("0x6000"),
+      blockNumber: "123",
+      proxy: { standard: "EIP-1967", implementation: target },
+    });
+    expect(simulationResult.stateDiff).toMatchObject({ status: "disabled" });
     expect(rpcRequests[0]?.params?.[0]).toMatchObject({ from: guardAddress });
 
     explorerPayload = { status: "0", result: "Contract source code not verified" };

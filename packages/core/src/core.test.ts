@@ -152,6 +152,62 @@ describe("deterministic policy", () => {
     );
     expect(decideFinalVerdict(findings, model).verdict).toBe("block");
   });
+
+  it("loads an ERC-20 policy pack for finite spending authority", () => {
+    const calldata = encodeFunctionData({
+      abi: [
+        {
+          type: "function",
+          name: "approve",
+          stateMutability: "nonpayable",
+          inputs: [
+            { name: "spender", type: "address" },
+            { name: "amount", type: "uint256" },
+          ],
+          outputs: [{ name: "", type: "bool" }],
+        },
+      ],
+      functionName: "approve",
+      args: [spender, 100n],
+    });
+    const findings = evaluateDeterministicPolicy(action({ calldata }), simulation, {
+      expectedChainId: 16602,
+      now: 1_700_000_010,
+      maxNativeValueWei: 10n ** 16n,
+      deniedSpenders: new Set(),
+      duplicate: false,
+      policyPacks: new Set(["base", "erc20-approvals"]),
+    });
+    expect(findings).toContainEqual(
+      expect.objectContaining({ id: "ERC20_FINITE_APPROVAL_REVIEW", blocking: false }),
+    );
+    expect(decideFinalVerdict(findings, model).verdict).toBe("review");
+  });
+
+  it("blocks a state footprint above the configured account limit", () => {
+    const findings = evaluateDeterministicPolicy(
+      action(),
+      {
+        ...simulation,
+        stateDiff: {
+          status: "available",
+          accountsChanged: 9,
+          storageSlotsChanged: 12,
+          note: "Test-only summarized state diff.",
+        },
+      },
+      {
+        expectedChainId: 16602,
+        now: 1_700_000_010,
+        maxNativeValueWei: 10n ** 16n,
+        deniedSpenders: new Set(),
+        duplicate: false,
+        maxStateDiffAccounts: 8,
+      },
+    );
+    expect(findings.map((item) => item.id)).toContain("STATE_FOOTPRINT_LIMIT");
+    expect(decideFinalVerdict(findings, model).verdict).toBe("block");
+  });
 });
 
 describe("action inspection", () => {

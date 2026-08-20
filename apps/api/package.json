@@ -9,13 +9,15 @@
     "start": "node dist/server.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run --coverage.enabled=false",
+    "test:postgres": "vitest run test/postgres.test.ts --coverage.enabled=false",
     "test:live": "tsx src/live-smoke.ts --check-only",
     "readiness:live": "tsx src/readiness-smoke.ts",
     "smoke:compute": "tsx src/compute-smoke.ts",
     "register:agent": "tsx src/register-agentic-id.ts",
     "bootstrap:testnet": "tsx src/bootstrap-testnet-env.ts",
     "demo:sandbox": "tsx src/demo.ts",
-    "demo:live": "tsx src/live-smoke.ts"
+    "demo:live": "tsx src/live-smoke.ts",
+    "db:migrate": "tsx src/migrate.ts"
   },
   "dependencies": {
     "@actionproof/0g": "workspace:*",
@@ -25,11 +27,13 @@
     "@fastify/rate-limit": "11.2.0",
     "ethers": "6.13.1",
     "fastify": "5.11.3",
+    "pg": "^8.23.0",
     "viem": "2.55.13",
     "zod": "4.4.3"
   },
   "devDependencies": {
     "@types/node": "26.2.0",
+    "@types/pg": "^8.23.1",
     "tsx": "4.23.12",
     "typescript": "6.0.2",
     "vitest": "4.1.10"

@@ -39,6 +39,8 @@ interface IntegrationStatus {
     instantPreflight: boolean;
     fullAttestation: boolean;
     publicVerification: boolean;
+    durableQueue: boolean;
+    postgresPersistence: boolean;
   };
   operatorAuthorization: { required: boolean; configured: boolean };
   services: Array<{ id: string; status: string }>;
@@ -115,6 +117,14 @@ invariant(
   integrations.capabilities.fullAttestation === false,
   "public deployment unexpectedly exposes full attestation",
 );
+invariant(
+  integrations.capabilities.durableQueue,
+  "durable restart queue capability is unavailable",
+);
+invariant(
+  integrations.capabilities.postgresPersistence === false,
+  "public single-host deployment unexpectedly claims PostgreSQL persistence",
+);
 for (const id of ["chain", "compute", "storage"]) {
   invariant(
     integrations.services.some((service) => service.id === id && service.status === "available"),
@@ -188,6 +198,13 @@ invariant(preview.disposition === "pass", `safe preflight returned ${preview.dis
 invariant(
   preview.notice.includes("no 0G Compute inference"),
   "preflight does not disclose its no-spend boundary",
+);
+const metricsResponse = await get(origin, "/metrics");
+const metricsBody = await metricsResponse.text();
+invariant(
+  metricsBody.includes("actionproof_job_queue") &&
+    metricsBody.includes("actionproof_preflight_total"),
+  "public operational metrics are incomplete",
 );
 
 const rejected = await fetch(`${origin}/v1/jobs`, {

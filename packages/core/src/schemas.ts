@@ -86,6 +86,28 @@ export const simulationResultSchema = z.object({
   returnData: hexSchema.optional(),
   error: z.string().max(1_000).optional(),
   effects: z.array(simulatedEffectSchema).max(100),
+  targetAnalysis: z
+    .object({
+      codeHash: bytes32Schema,
+      blockNumber: uintStringSchema,
+      proxy: z
+        .object({
+          standard: z.literal("EIP-1967"),
+          implementation: addressSchema.optional(),
+          admin: addressSchema.optional(),
+          beacon: addressSchema.optional(),
+        })
+        .optional(),
+    })
+    .optional(),
+  stateDiff: z
+    .object({
+      status: z.enum(["available", "disabled", "unsupported", "failed"]),
+      accountsChanged: z.number().int().nonnegative().optional(),
+      storageSlotsChanged: z.number().int().nonnegative().optional(),
+      note: z.string().min(1).max(500),
+    })
+    .optional(),
   observedAt: z.string().datetime(),
 });
 
@@ -143,6 +165,7 @@ export const riskReportSchema = z.object({
   agentIdentity: agentIdentityEvidenceSchema.optional(),
   finalPolicy: z.object({
     version: z.literal("actionproof-policy/1"),
+    packs: z.array(z.string().min(1)).optional(),
     blockingRuleIds: z.array(z.string()),
     reasons: z.array(z.string().min(1)),
   }),

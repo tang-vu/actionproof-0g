@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import {
   canonicalize,
+  applicablePolicyPacks,
   createAttestation,
   decideFinalVerdict,
   evaluateDeterministicPolicy,
@@ -35,6 +36,7 @@ import {
   type StoredJob,
   type TraceVerification,
   type VerificationCheck,
+  type WebhookOutboxItem,
 } from "./types.js";
 
 const STEP_LABELS: Readonly<Record<StageId, string>> = {
@@ -49,9 +51,17 @@ const STEP_LABELS: Readonly<Record<StageId, string>> = {
 export interface CreateJobInput {
   action: ActionRequest;
   execute: boolean;
+  tenantId?: string;
 }
 
 type Clock = () => Date;
+
+class JobLeaseLostError extends Error {
+  constructor() {
+    super("Worker lost its durable job lease; reconciliation is required");
+    this.name = "JobLeaseLostError";
+  }
+}
 
 function sameBytes(left: Uint8Array, right: Uint8Array): boolean {
   return left.byteLength === right.byteLength && left.every((byte, index) => byte === right[index]);
@@ -185,13 +195,37 @@ export class Orchestrator {
   readonly #runtime: Runtime;
   readonly #store: StateStore;
   readonly #clock: Clock;
-  #queue: Promise<void> = Promise.resolve();
+  readonly #workerId = randomUUID();
+  readonly #terminalWebhook:
+    ((job: StoredJob) => Omit<WebhookOutboxItem, "attempts"> | undefined) | undefined;
+  readonly #terminalObserver: ((job: StoredJob) => void) | undefined;
+  #drain: Promise<void> = Promise.resolve();
+  #poller?: NodeJS.Timeout;
+  #closed = false;
 
-  constructor(args: { config: AppConfig; runtime: Runtime; store: StateStore; clock?: Clock }) {
+  constructor(args: {
+    config: AppConfig;
+    runtime: Runtime;
+    store: StateStore;
+    clock?: Clock;
+    terminalWebhook?: (job: StoredJob) => Omit<WebhookOutboxItem, "attempts"> | undefined;
+    terminalObserver?: (job: StoredJob) => void;
+  }) {
     this.#config = args.config;
     this.#runtime = args.runtime;
     this.#store = args.store;
     this.#clock = args.clock ?? (() => new Date());
+    this.#terminalWebhook = args.terminalWebhook;
+    this.#terminalObserver = args.terminalObserver;
+    this.#poller = setInterval(() => this.#scheduleDrain(), this.#config.QUEUE_POLL_MS);
+    this.#poller.unref();
+    this.#scheduleDrain();
+  }
+
+  async close(): Promise<void> {
+    this.#closed = true;
+    if (this.#poller) clearInterval(this.#poller);
+    await this.#drain;
   }
 
   async createJob(input: CreateJobInput): Promise<AnalysisJob> {
@@ -202,20 +236,52 @@ export class Orchestrator {
       steps: stageIds.map((id) => ({ id, label: STEP_LABELS[id], status: "pending" })),
       action: input.action,
       execute: input.execute,
+      ...(input.tenantId ? { tenantId: input.tenantId } : {}),
       createdAt: now,
       updatedAt: now,
     };
     await this.#store.putJob(job);
-    this.#queue = this.#queue.then(
-      () => this.#run(job.id),
-      () => this.#run(job.id),
-    );
+    await this.#store.enqueueJob(job.id);
+    this.#scheduleDrain();
     return publicJob(job);
   }
 
-  getJob(id: string): AnalysisJob | undefined {
-    const job = this.#store.getJob(id);
+  async getJob(id: string): Promise<AnalysisJob | undefined> {
+    const job = await this.#store.getJob(id);
     return job ? publicJob(job) : undefined;
+  }
+
+  queueStats() {
+    return this.#store.queueStats();
+  }
+
+  #scheduleDrain(): void {
+    if (this.#closed) return;
+    this.#drain = this.#drain.then(
+      () => this.#drainQueue(),
+      () => this.#drainQueue(),
+    );
+  }
+
+  async #drainQueue(): Promise<void> {
+    while (!this.#closed) {
+      const id = await this.#store.claimNextJob(this.#workerId, this.#config.QUEUE_LEASE_MS);
+      if (!id) return;
+      const heartbeat = setInterval(
+        () =>
+          void this.#store
+            .renewJobLease(id, this.#workerId, this.#config.QUEUE_LEASE_MS)
+            .catch(() => undefined),
+        Math.max(10_000, Math.floor(this.#config.QUEUE_LEASE_MS / 3)),
+      );
+      heartbeat.unref();
+      try {
+        await this.#run(id);
+      } finally {
+        clearInterval(heartbeat);
+        await this.#store.acknowledgeJob(id, this.#workerId);
+      }
+    }
   }
 
   async nextNonce(agent: `0x${string}`, requester: `0x${string}`): Promise<bigint> {
@@ -225,6 +291,7 @@ export class Orchestrator {
   async preview(action: ActionRequest): Promise<PreflightPreview> {
     const checkedAt = this.#clock();
     const actionHash = hashActionRequest(action);
+    const inspection = inspectAction(action);
     const [simulation, expectedNonce, identityResult] = await Promise.all([
       this.#runtime.chain.simulateAction(action),
       this.#runtime.chain.nextNonce(action.agent, action.requester),
@@ -238,7 +305,9 @@ export class Orchestrator {
       maxNativeValueWei: this.#config.maxNativeValueWei,
       deniedSpenders: this.#config.deniedSpenders,
       ...(this.#config.allowedTargets ? { allowedTargets: this.#config.allowedTargets } : {}),
-      duplicate: Boolean(this.#store.findTraceByActionHash(actionHash)),
+      duplicate: Boolean(await this.#store.findTraceByActionHash(actionHash)),
+      policyPacks: this.#config.policyPacks,
+      maxStateDiffAccounts: this.#config.MAX_STATE_DIFF_ACCOUNTS,
     });
 
     if (!nonceMatches) {
@@ -289,7 +358,7 @@ export class Orchestrator {
       mode: this.#runtime.mode,
       actionHash,
       policyVersion: "actionproof-policy/1",
-      inspection: inspectAction(action),
+      inspection,
       simulation,
       ...(identityResult.agentIdentity ? { agentIdentity: identityResult.agentIdentity } : {}),
       findings,
@@ -308,6 +377,9 @@ export class Orchestrator {
         maxRequestTtlMs: this.#config.JOB_TTL_MS,
         targetAllowlistEnforced: Boolean(this.#config.allowedTargets),
         deniedSpenderCount: this.#config.deniedSpenders.size,
+        packs: applicablePolicyPacks(inspection).filter((pack) =>
+          this.#config.policyPacks.has(pack),
+        ),
       },
       analysisPerformed: ["calldata-inspection", "chain-simulation", "deterministic-policy"],
       checkedAt: checkedAt.toISOString(),
@@ -321,8 +393,21 @@ export class Orchestrator {
   }
 
   async #run(id: string): Promise<void> {
-    const job = this.#store.getJob(id);
+    const job = await this.#store.getJob(id);
     if (!job) return;
+    if (job.status !== "queued") {
+      await this.#fail(
+        job,
+        job.steps.find((step) => step.status === "active")?.id ?? "preflight",
+        new ApiError(
+          409,
+          "RECOVERY_REQUIRES_RECONCILIATION",
+          "A worker stopped after starting this job. External side effects must be reconciled before retry; automatic rebroadcast is forbidden.",
+        ),
+      );
+      await this.#persistTerminal(job);
+      return;
+    }
     let activeStage: StageId = "preflight";
     try {
       await this.#start(job, "preflight");
@@ -353,7 +438,7 @@ export class Orchestrator {
         );
       }
       const actionHash = hashActionRequest(job.action);
-      if (this.#store.findTraceByActionHash(actionHash)) {
+      if (await this.#store.findTraceByActionHash(actionHash)) {
         throw new ApiError(409, "DUPLICATE_ACTION", "This exact action already has a trace");
       }
       await this.#complete(job, "preflight", `Exact submitted nonce ${job.action.nonce} accepted.`);
@@ -368,6 +453,8 @@ export class Orchestrator {
         deniedSpenders: this.#config.deniedSpenders,
         ...(this.#config.allowedTargets ? { allowedTargets: this.#config.allowedTargets } : {}),
         duplicate: false,
+        policyPacks: this.#config.policyPacks,
+        maxStateDiffAccounts: this.#config.MAX_STATE_DIFF_ACCOUNTS,
       });
       const identityResult = await resolveAgentIdentity(this.#runtime, this.#config, job.action);
       const agentIdentity = identityResult.agentIdentity;
@@ -422,6 +509,9 @@ export class Orchestrator {
         ...(agentIdentity ? { agentIdentity } : {}),
         finalPolicy: {
           version: "actionproof-policy/1",
+          packs: applicablePolicyPacks(inspectAction(job.action)).filter((pack) =>
+            this.#config.policyPacks.has(pack),
+          ),
           blockingRuleIds: finalDecision.blockingRuleIds,
           reasons:
             finalDecision.reasons.length > 0
@@ -525,13 +615,23 @@ export class Orchestrator {
       job.status = "completed";
       job.traceId = trace.id;
       job.updatedAt = this.#clock().toISOString();
-      await this.#store.putJob(job);
+      await this.#persistTerminal(job);
     } catch (error) {
+      if (error instanceof JobLeaseLostError) return;
       await this.#fail(job, activeStage, error);
+      await this.#persistTerminal(job);
     }
   }
 
+  async #persistTerminal(job: StoredJob): Promise<void> {
+    await this.#ensureLease(job.id);
+    const webhook = this.#terminalWebhook?.(structuredClone(job));
+    await this.#store.finalizeJob(job, webhook);
+    this.#terminalObserver?.(structuredClone(job));
+  }
+
   async #start(job: StoredJob, stage: StageId): Promise<void> {
+    await this.#ensureLease(job.id);
     job.status = stage;
     const step = job.steps.find((entry) => entry.id === stage);
     if (step) step.status = "active";
@@ -540,6 +640,7 @@ export class Orchestrator {
   }
 
   async #complete(job: StoredJob, stage: StageId, detail: string): Promise<void> {
+    await this.#ensureLease(job.id);
     const step = job.steps.find((entry) => entry.id === stage);
     if (step) {
       step.status = "complete";
@@ -554,6 +655,7 @@ export class Orchestrator {
     detail: string,
     status: "complete" | "skipped",
   ): Promise<void> {
+    await this.#ensureLease(job.id);
     const step = job.steps.find((entry) => entry.id === "execution");
     if (step) {
       step.status = status;
@@ -561,6 +663,15 @@ export class Orchestrator {
     }
     job.updatedAt = this.#clock().toISOString();
     await this.#store.putJob(job);
+  }
+
+  async #ensureLease(id: string): Promise<void> {
+    const renewed = await this.#store.renewJobLease(
+      id,
+      this.#workerId,
+      this.#config.QUEUE_LEASE_MS,
+    );
+    if (!renewed) throw new JobLeaseLostError();
   }
 
   async #fail(job: StoredJob, stage: StageId, error: unknown): Promise<void> {
@@ -580,7 +691,6 @@ export class Orchestrator {
       retryable: isRetryable(error),
     };
     job.updatedAt = this.#clock().toISOString();
-    await this.#store.putJob(job);
   }
 }
 

@@ -15,6 +15,7 @@ import type {
   Verdict,
 } from "./schemas.js";
 import { inspectAction, SELECTORS } from "./inspection.js";
+import { evaluatePolicyPacks, type PolicyPackId } from "./policy-packs.js";
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 const UINT256_MAX = (1n << 256n) - 1n;
@@ -36,6 +37,8 @@ export interface PolicyContext {
   allowedTargets?: ReadonlySet<string>;
   duplicate: boolean;
   targetBytecode?: Hex;
+  policyPacks?: ReadonlySet<PolicyPackId>;
+  maxStateDiffAccounts?: number;
 }
 
 function finding(
@@ -230,6 +233,43 @@ export function evaluateDeterministicPolicy(
     );
   }
 
+  if (simulation.targetAnalysis?.proxy) {
+    findings.push(
+      finding(
+        "EIP1967_PROXY_TARGET",
+        "high",
+        "Upgradeable proxy target detected",
+        "The target's implementation or administration can change independently of this action envelope.",
+        [
+          `implementation=${simulation.targetAnalysis.proxy.implementation ?? "unset"}`,
+          `admin=${simulation.targetAnalysis.proxy.admin ?? "unset"}`,
+          `beacon=${simulation.targetAnalysis.proxy.beacon ?? "unset"}`,
+        ],
+        false,
+      ),
+    );
+  }
+
+  if (
+    simulation.stateDiff?.status === "available" &&
+    simulation.stateDiff.accountsChanged !== undefined &&
+    simulation.stateDiff.accountsChanged > (context.maxStateDiffAccounts ?? 8)
+  ) {
+    findings.push(
+      finding(
+        "STATE_FOOTPRINT_LIMIT",
+        "critical",
+        "Simulated state footprint exceeds policy",
+        "The trace changed more accounts than this deployment permits for an autonomous action.",
+        [
+          `accountsChanged=${simulation.stateDiff.accountsChanged}`,
+          `limit=${context.maxStateDiffAccounts ?? 8}`,
+        ],
+        true,
+      ),
+    );
+  }
+
   if (context.targetBytecode?.toLowerCase().includes("f4")) {
     findings.push(
       finding(
@@ -351,6 +391,18 @@ export function evaluateDeterministicPolicy(
       ),
     );
   }
+
+  const enabledPacks =
+    context.policyPacks ??
+    new Set<PolicyPackId>([
+      "base",
+      "erc20-approvals",
+      "asset-movement",
+      "nft-operators",
+      "contract-administration",
+      "proxy-upgrades",
+    ]);
+  findings.push(...evaluatePolicyPacks(action, inspection, enabledPacks));
 
   return findings;
 }

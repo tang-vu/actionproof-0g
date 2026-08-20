@@ -1,4 +1,5 @@
 import { setTimeout as delay } from "node:timers/promises";
+import { createHash } from "node:crypto";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -181,6 +182,12 @@ describe("ActionProof API sandbox pipeline", () => {
 
     const traces = await app.inject({ method: "GET", url: "/v1/traces" });
     expect(traces.json()).toEqual({ traces: [] });
+
+    const metrics = await app.inject({ method: "GET", url: "/metrics" });
+    expect(metrics.statusCode).toBe(200);
+    expect(metrics.headers["content-type"]).toContain("text/plain");
+    expect(metrics.body).toContain('actionproof_preflight_total{disposition="pass"} 1');
+    expect(metrics.body).toContain('actionproof_preflight_total{disposition="block"} 1');
   });
 
   it("executes an allowed action, anchors a blocked action, and detects tampering", async () => {
@@ -407,6 +414,25 @@ describe("ActionProof API sandbox pipeline", () => {
     expect(explicitlyAllowed.liveWriteEnabled).toBe(true);
   });
 
+  it("requires a durable PostgreSQL outbox for production tenant webhooks", () => {
+    const tenant = {
+      id: "production-tenant",
+      apiKeySha256: "ab".repeat(32),
+      requestsPerMinute: 30,
+      webhookUrl: "https://tenant.example.test/actionproof",
+      webhookSecret: "test-only-webhook-secret-with-32-characters",
+    };
+    expect(() =>
+      parseEnv({
+        NODE_ENV: "production",
+        ACTIONPROOF_MODE: "sandbox",
+        OG_NETWORK: "galileo",
+        OG_CHAIN_ID: "16602",
+        ACTIONPROOF_TENANTS_JSON: JSON.stringify([tenant]),
+      }),
+    ).toThrow(/Production webhooks require DATABASE_URL/u);
+  });
+
   it("rejects public live submissions synchronously when writes are disabled", async () => {
     const parsed = parseEnv({
       ACTIONPROOF_MODE: "live",
@@ -449,6 +475,9 @@ describe("ActionProof API sandbox pipeline", () => {
 
     expect(response.statusCode).toBe(503);
     expect(response.json()).toMatchObject({ error: { code: "LIVE_WRITES_DISABLED" } });
+    const readiness = await app.inject({ method: "GET", url: "/ready" });
+    expect(readiness.statusCode).toBe(200);
+    expect(readiness.json()).toMatchObject({ ready: true, mode: "live" });
   });
 
   it("requires constant-time operator authorization before accepting live API writes", async () => {
@@ -503,6 +532,58 @@ describe("ActionProof API sandbox pipeline", () => {
     expect(await terminalJob(app, (accepted.json() as AnalysisJob).id)).toMatchObject({
       status: "completed",
     });
+  });
+
+  it("accepts hashed tenant API keys and enforces per-tenant quota", async () => {
+    const apiKey = "test-tenant-api-key-with-more-than-32-characters";
+    const digest = createHash("sha256").update(apiKey).digest("hex");
+    const parsed = parseEnv({
+      ACTIONPROOF_MODE: "live",
+      NODE_ENV: "test",
+      OG_NETWORK: "galileo",
+      OG_CHAIN_ID: "16602",
+      OG_RPC_URL: "https://rpc.example.test",
+      OG_EXPLORER_URL: "https://chainscan.example.test",
+      OG_STORAGE_INDEXER_URL: "https://indexer.example.test",
+      OG_STORAGE_EXPLORER_URL: "https://storage.example.test",
+      OG_STORAGE_PRIVATE_KEY: `0x${"11".repeat(32)}`,
+      OG_COMPUTE_BASE_URL: "https://compute.example.test",
+      OG_COMPUTE_API_KEY: "test-only-key",
+      OG_COMPUTE_MODEL: "test-only-model",
+      VERIFIER_PRIVATE_KEY: `0x${"22".repeat(32)}`,
+      RELAYER_PRIVATE_KEY: `0x${"33".repeat(32)}`,
+      ACTIONPROOF_GUARD_ADDRESS: COUNTER,
+      ENABLE_LIVE_WRITES: "true",
+      ACTIONPROOF_TENANTS_JSON: JSON.stringify([
+        { id: "test-tenant", apiKeySha256: digest, requestsPerMinute: 1 },
+      ]),
+    });
+    const sandbox = createSandboxRuntime(parsed);
+    const app = await createApp({ ...sandbox, mode: "live" }, parsed);
+
+    const unauthorized = await app.inject({
+      method: "POST",
+      url: "/v1/jobs",
+      payload: { action: action({ nonce: "0" }), execute: false },
+    });
+    expect(unauthorized.statusCode).toBe(401);
+
+    const accepted = await app.inject({
+      method: "POST",
+      url: "/v1/jobs",
+      headers: { "x-api-key": apiKey },
+      payload: { action: action({ nonce: "0" }), execute: false },
+    });
+    expect(accepted.statusCode).toBe(202);
+
+    const quotaExceeded = await app.inject({
+      method: "POST",
+      url: "/v1/jobs",
+      headers: { "x-api-key": apiKey },
+      payload: { action: action({ nonce: "0" }), execute: false },
+    });
+    expect(quotaExceeded.statusCode).toBe(429);
+    expect(quotaExceeded.json()).toMatchObject({ error: { code: "TENANT_QUOTA_EXCEEDED" } });
   });
 
   it("fails closed when live writes are enabled without an operator token", async () => {

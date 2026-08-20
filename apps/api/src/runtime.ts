@@ -1,5 +1,7 @@
 import {
   Erc8004IdentityResolver,
+  LocalAttestationSigner,
+  RemoteAttestationSigner,
   SandboxChainAdapter,
   SandboxComputeAdapter,
   SandboxStorageAdapter,
@@ -21,7 +23,7 @@ import { privateKeyToAccount } from "viem/accounts";
 import { asPrivateKey, requireLiveValue, type AppConfig } from "./config.js";
 
 export interface RuntimeServiceStatus {
-  id: "chain" | "compute" | "storage" | "identity";
+  id: "chain" | "compute" | "storage" | "identity" | "signer";
   name: string;
   status: "available" | "unavailable" | "sandbox";
   detail: string;
@@ -87,6 +89,12 @@ export function createSandboxRuntime(config: AppConfig): Runtime {
         status: "unavailable",
         detail: "Optional identity evidence is disabled in sandbox mode.",
       },
+      {
+        id: "signer",
+        name: "Verifier signer",
+        status: "sandbox",
+        detail: "SANDBOX ONLY â€” ephemeral local verifier; no production KMS/HSM is claimed.",
+      },
     ],
     resolveAgentIdentity: async () => undefined,
   };
@@ -111,9 +119,16 @@ export function createLiveRuntime(config: AppConfig): Runtime {
   const relayer = privateKeyToAccount(
     asPrivateKey(config.RELAYER_PRIVATE_KEY, "RELAYER_PRIVATE_KEY"),
   );
-  const verifier = privateKeyToAccount(
-    asPrivateKey(config.VERIFIER_PRIVATE_KEY, "VERIFIER_PRIVATE_KEY"),
-  );
+  const verifierSigner = config.VERIFIER_SIGNER_URL
+    ? new RemoteAttestationSigner({
+        address: requireLiveValue(config.AUTHORIZED_VERIFIER, "AUTHORIZED_VERIFIER") as Address,
+        endpoint: config.VERIFIER_SIGNER_URL,
+        token: requireLiveValue(config.VERIFIER_SIGNER_TOKEN, "VERIFIER_SIGNER_TOKEN"),
+        timeoutMs: config.READINESS_TIMEOUT_MS,
+      })
+    : new LocalAttestationSigner(
+        privateKeyToAccount(asPrivateKey(config.VERIFIER_PRIVATE_KEY, "VERIFIER_PRIVATE_KEY")),
+      );
   const guardAddress = requireLiveValue(
     config.ACTIONPROOF_GUARD_ADDRESS,
     "ACTIONPROOF_GUARD_ADDRESS",
@@ -135,11 +150,12 @@ export function createLiveRuntime(config: AppConfig): Runtime {
     publicClient,
     walletClient,
     relayerAccount: relayer,
-    verifierAccount: verifier,
+    verifierSigner,
     guardAddress,
     explorerBaseUrl: explorerUrl,
     explorerApiUrl: `${explorerUrl.replace(/\/$/u, "")}/open/api`,
     sourceVerificationTimeoutMs: config.READINESS_TIMEOUT_MS,
+    enableStateDiff: config.ENABLE_STATE_DIFF,
   });
   const compute = new ZgComputeRouterAdapter({
     apiKey: requireLiveValue(config.OG_COMPUTE_API_KEY, "OG_COMPUTE_API_KEY"),
@@ -190,12 +206,12 @@ export function createLiveRuntime(config: AppConfig): Runtime {
           }),
         ]);
         if (!bytecode || bytecode === "0x") throw new Error("configured guard has no bytecode");
-        if (onchainVerifier.toLowerCase() !== verifier.address.toLowerCase()) {
+        if (onchainVerifier.toLowerCase() !== verifierSigner.address.toLowerCase()) {
           throw new Error(
-            `guard verifier mismatch: onchain=${onchainVerifier}, configured=${verifier.address}`,
+            `guard verifier mismatch: onchain=${onchainVerifier}, configured=${verifierSigner.address}`,
           );
         }
-        chainProbe.detail += ` Guard bytecode and verifier ${verifier.address} match.`;
+        chainProbe.detail += ` Guard bytecode and verifier ${verifierSigner.address} match.`;
       } catch (error) {
         chainProbe.status = "unavailable";
         chainProbe.detail = `RPC passed, but ActionProofGuard readiness failed: ${error instanceof Error ? error.message : "unknown guard error"}`;
@@ -243,6 +259,37 @@ export function createLiveRuntime(config: AppConfig): Runtime {
         name: "ERC-8004 Agentic ID",
         status: "unavailable",
         detail: "Optional read-only evidence is not configured; set OG_AGENTIC_ID to enable it.",
+      });
+    }
+    if (verifierSigner instanceof RemoteAttestationSigner) {
+      const started = Date.now();
+      try {
+        await verifierSigner.health();
+        services.push({
+          id: "signer",
+          name: "Remote verifier signer",
+          status: "available",
+          detail: `Authenticated signer health matches ${verifierSigner.address}; signing still verifies every returned EIP-712 signature.`,
+          latencyMs: Date.now() - started,
+          checkedAt: new Date().toISOString(),
+        });
+      } catch (error) {
+        services.push({
+          id: "signer",
+          name: "Remote verifier signer",
+          status: "unavailable",
+          detail: `Remote signer health failed: ${error instanceof Error ? error.message : "unknown signer error"}`,
+          latencyMs: Date.now() - started,
+          checkedAt: new Date().toISOString(),
+        });
+      }
+    } else {
+      services.push({
+        id: "signer",
+        name: "Local verifier signer",
+        status: "available",
+        detail: `Server-local verifier ${verifierSigner.address} matches the guard; use the remote signer boundary for production isolation.`,
+        checkedAt: new Date().toISOString(),
       });
     }
     cachedProbe = { expiresAt: Date.now() + 30_000, services };

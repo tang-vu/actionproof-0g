@@ -9,9 +9,17 @@ import { z, ZodError } from "zod";
 
 import { parseEnv, type AppConfig, type RawEnv } from "./config.js";
 import { ApiError } from "./errors.js";
+import { MetricsRegistry } from "./metrics.js";
 import { Orchestrator, tamperedTrace } from "./orchestrator.js";
 import { createRuntime, type Runtime } from "./runtime.js";
-import { JsonFileStateStore, MemoryStateStore, type StateStore } from "./store.js";
+import {
+  JsonFileStateStore,
+  MemoryStateStore,
+  PostgresStateStore,
+  type StateStore,
+} from "./store.js";
+import { TenantRegistry } from "./tenancy.js";
+import { WebhookDispatcher } from "./webhooks.js";
 
 const idParamsSchema = z.object({ id: z.uuid() }).strict();
 const rootParamsSchema = z.object({ rootHash: bytes32Schema }).strict();
@@ -113,9 +121,26 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     options.store ??
     (config.NODE_ENV === "test"
       ? new MemoryStateStore()
-      : new JsonFileStateStore(config.API_DATA_DIR));
+      : config.DATABASE_URL
+        ? new PostgresStateStore(config.DATABASE_URL)
+        : new JsonFileStateStore(config.API_DATA_DIR));
   await store.initialize();
-  const orchestrator = new Orchestrator({ config, runtime, store });
+  const tenants = new TenantRegistry(config.tenants, store);
+  const metrics = new MetricsRegistry();
+  const webhooks = new WebhookDispatcher({
+    store,
+    tenants,
+    timeoutMs: config.WEBHOOK_TIMEOUT_MS,
+    leaseMs: config.QUEUE_LEASE_MS,
+    pollMs: config.QUEUE_POLL_MS,
+  });
+  const orchestrator = new Orchestrator({
+    config,
+    runtime,
+    store,
+    terminalWebhook: (job) => webhooks.eventFor(job),
+    terminalObserver: (job) => metrics.recordJob(job.status),
+  });
   const app = Fastify({
     logger:
       options.logger ??
@@ -125,9 +150,12 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
             level: config.NODE_ENV === "production" ? "info" : "debug",
             redact: [
               "req.headers.authorization",
+              "req.headers.x-api-key",
               "req.headers.cookie",
               "*.OG_COMPUTE_API_KEY",
               "*.privateKey",
+              "*.webhookSecret",
+              "*.VERIFIER_SIGNER_TOKEN",
               "*.signature",
             ],
           }),
@@ -143,7 +171,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   await app.register(cors, {
     credentials: false,
     methods: ["GET", "POST", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Accept", "Authorization"],
+    allowedHeaders: ["Content-Type", "Accept", "Authorization", "X-API-Key"],
     origin(origin, callback) {
       if (!origin || config.corsOrigins.has("*") || config.corsOrigins.has(origin)) {
         callback(null, true);
@@ -165,6 +193,25 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
         retryable: true,
       },
     }),
+  });
+  app.addHook("onClose", async () => {
+    await orchestrator.close();
+    await webhooks.close();
+    await store.close();
+  });
+  const requestStarted = new Map<string, number>();
+  app.addHook("onRequest", async (request) => {
+    requestStarted.set(request.id, performance.now());
+  });
+  app.addHook("onResponse", async (request, reply) => {
+    const started = requestStarted.get(request.id) ?? performance.now();
+    requestStarted.delete(request.id);
+    metrics.observeHttp(
+      request.method,
+      request.routeOptions.url ?? "unmatched",
+      reply.statusCode,
+      performance.now() - started,
+    );
   });
 
   app.setErrorHandler((error, request, reply) => {
@@ -189,7 +236,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     });
   });
 
-  const health = () => ({
+  const health = async () => ({
     ok: true,
     service: "actionproof-api",
     mode: config.ACTIONPROOF_MODE,
@@ -197,6 +244,9 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
       config.ACTIONPROOF_MODE === "sandbox"
         ? "SANDBOX ONLY — no production services"
         : "LIVE CONFIGURED — paid success is not implied",
+    persistence: config.DATABASE_URL ? "postgresql" : "atomic-json",
+    queue: await orchestrator.queueStats(),
+    webhooks: await webhooks.stats(),
   });
   const readiness = async (_request: unknown, reply: { code(status: number): unknown }) => {
     const services = await runtime.integrationStatus();
@@ -208,8 +258,17 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
       services.some((service) => service.id === "identity" && service.status === "available");
     const submissionGateReady =
       runtime.mode === "sandbox" ||
-      (config.liveWriteEnabled && Boolean(config.ACTIONPROOF_OPERATOR_TOKEN));
-    const ready = submissionGateReady && coreAvailable && identityAvailable;
+      !config.liveWriteEnabled ||
+      Boolean(config.ACTIONPROOF_OPERATOR_TOKEN) ||
+      tenants.size > 0;
+    const queue = await orchestrator.queueStats();
+    const webhookQueue = await webhooks.stats();
+    const ready =
+      submissionGateReady &&
+      coreAvailable &&
+      identityAvailable &&
+      queue.exhausted === 0 &&
+      webhookQueue.exhausted === 0;
     if (!ready) reply.code(503);
     return {
       ready,
@@ -218,6 +277,9 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
         ? "runtime and required integration probes passed"
         : "a safety gate or required integration probe failed",
       services,
+      queue,
+      webhooks: webhookQueue,
+      persistence: config.DATABASE_URL ? "postgresql" : "atomic-json",
     };
   };
   app.get("/health", health);
@@ -232,10 +294,17 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
       instantPreflight: true,
       fullAttestation: runtime.mode === "sandbox" || config.liveWriteEnabled,
       publicVerification: true,
+      durableQueue: true,
+      postgresPersistence: Boolean(config.DATABASE_URL),
     },
     operatorAuthorization: {
       required: runtime.mode === "live" && config.liveWriteEnabled,
       configured: Boolean(config.ACTIONPROOF_OPERATOR_TOKEN),
+    },
+    tenancy: {
+      configuredTenants: tenants.size,
+      authentication: tenants.size > 0 ? "sha256-api-key" : "legacy-operator",
+      durableWebhooks: Boolean(config.DATABASE_URL),
     },
     network: {
       name: config.OG_NETWORK === "galileo" ? "0G Galileo Testnet" : "0G Mainnet",
@@ -243,6 +312,13 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     },
     services: await runtime.integrationStatus(),
   }));
+
+  app.get("/metrics", async (_request, reply) => {
+    const [queue, webhookQueue] = await Promise.all([orchestrator.queueStats(), webhooks.stats()]);
+    return reply
+      .type("text/plain; version=0.0.4; charset=utf-8")
+      .send(metrics.render({ queue, webhooks: webhookQueue }));
+  });
 
   app.get("/v1/nonces/:requester", async (request) => {
     const params = requesterParamsSchema.parse(request.params);
@@ -261,10 +337,16 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
 
   app.post("/v1/preflight", async (request) => {
     const { action } = preflightSchema.parse(request.body);
-    return orchestrator.preview(action);
+    const preview = await orchestrator.preview(action);
+    metrics.recordPreflight(preview.disposition);
+    return preview;
   });
 
   app.post("/v1/jobs", async (request, reply) => {
+    const apiKey = Array.isArray(request.headers["x-api-key"])
+      ? request.headers["x-api-key"][0]
+      : request.headers["x-api-key"];
+    let tenant;
     if (runtime.mode === "live") {
       if (!config.liveWriteEnabled) {
         throw new ApiError(
@@ -273,45 +355,65 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
           "This public deployment is read-only; live analysis requires an operator to enable the network safety gate",
         );
       }
-      if (!config.ACTIONPROOF_OPERATOR_TOKEN) {
+      tenant = await tenants.authenticate(apiKey);
+      if (!config.ACTIONPROOF_OPERATOR_TOKEN && tenants.size === 0) {
         throw new ApiError(
           503,
           "OPERATOR_AUTH_NOT_CONFIGURED",
           "Live API submissions remain disabled until the operator authorization gate is configured",
         );
       }
-      if (!operatorTokenMatches(request.headers.authorization, config.ACTIONPROOF_OPERATOR_TOKEN)) {
+      if (
+        !tenant &&
+        (!config.ACTIONPROOF_OPERATOR_TOKEN ||
+          !operatorTokenMatches(request.headers.authorization, config.ACTIONPROOF_OPERATOR_TOKEN))
+      ) {
         throw new ApiError(
           401,
           "OPERATOR_AUTH_REQUIRED",
           "A valid operator authorization token is required for live analysis",
         );
       }
+    } else {
+      tenant = await tenants.authenticate(apiKey);
     }
     const body = createJobSchema.parse(request.body);
-    const job = await orchestrator.createJob(body);
+    const job = await orchestrator.createJob({
+      ...body,
+      ...(tenant ? { tenantId: tenant.id } : {}),
+    });
+    request.log.info(
+      {
+        auditEvent: "assessment.accepted",
+        jobId: job.id,
+        tenantId: tenant?.id ?? "legacy-operator",
+        execute: body.execute,
+        actionHashExposure: "omitted",
+      },
+      "authorized full assessment accepted",
+    );
     return reply.code(202).send(job);
   });
   app.get("/v1/jobs/:id", async (request) => {
     const { id } = idParamsSchema.parse(request.params);
-    return orchestrator.getJob(id) ?? notFound("Job");
+    return (await orchestrator.getJob(id)) ?? notFound("Job");
   });
 
-  app.get("/v1/traces", async () => ({ traces: store.listTraces() }));
+  app.get("/v1/traces", async () => ({ traces: await store.listTraces() }));
   app.get("/v1/traces/:id", async (request) => {
     const { id } = idParamsSchema.parse(request.params);
-    return store.getTrace(id) ?? notFound("Trace");
+    return (await store.getTrace(id)) ?? notFound("Trace");
   });
   app.post("/v1/traces/:id/verify", async (request) => {
     const { id } = idParamsSchema.parse(request.params);
     const body = verificationSchema.parse(request.body ?? {});
-    const trace = store.getTrace(id) ?? notFound("Trace");
+    const trace = (await store.getTrace(id)) ?? notFound("Trace");
     return orchestrator.verify(body.mutation ? tamperedTrace(trace, body.mutation) : trace);
   });
 
   app.get("/v1/reports/:rootHash", async (request) => {
     const { rootHash } = rootParamsSchema.parse(request.params);
-    const trace = store.findTraceByRoot(rootHash) ?? notFound("Report");
+    const trace = (await store.findTraceByRoot(rootHash)) ?? notFound("Report");
     const integrity = await orchestrator.verify(trace);
     if (!integrity.valid) {
       throw new ApiError(409, "INTEGRITY_FAILED", "Stored report failed integrity verification");

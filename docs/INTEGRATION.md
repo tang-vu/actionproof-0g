@@ -11,6 +11,10 @@ Do not treat a preflight response as an attestation or safety guarantee. Its pur
 obvious policy violations early and give developers a machine-readable explanation before paid or
 irreversible stages begin.
 
+For TypeScript services, `@actionproof/sdk` validates the exact envelope locally, sends tenant
+authentication only to the configured origin, exposes typed preflight/job responses, and provides a
+bounded terminal-job poller. The HTTP contract below remains the source of truth for other clients.
+
 ## 1. Construct the exact action
 
 An `ActionRequest` binds every field that later enters the action hash and attestation:
@@ -81,12 +85,14 @@ An authorized deployment can submit the same, unchanged envelope:
 ```http
 POST /v1/jobs
 Authorization: Bearer <operator-token>
+X-API-Key: <tenant-key>
 Content-Type: application/json
 
 { "action": { ... }, "execute": false }
 ```
 
-The public Galileo deployment intentionally disables this paid/write path. Self-hosted operators
+Use either the tenant API key or the separately gated legacy operator token, never both. The public
+Galileo deployment intentionally disables this paid/write path. Self-hosted operators
 must configure funded role-separated accounts, the 0G Compute Router, 0G Storage, a deployed guard,
 and the independent write gates described in [DEPLOYMENT.md](DEPLOYMENT.md).
 
@@ -118,3 +124,5 @@ exactly `true` or if a required check is absent.
   scaling.
 - Move verifier keys to KMS/HSM or threshold signing and obtain an independent contract/application
   audit before valuable-asset use.
+- Monitor `/metrics`, exhausted queue/outbox work, integration health, and integrity failures against
+  the proposed objectives in [SLO.md](SLO.md).

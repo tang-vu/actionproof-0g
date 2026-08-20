@@ -582,6 +582,41 @@ function PreflightSummary({ preview }: { preview: PreflightPreview }) {
           <strong>{preview.nonceMatches ? "Exact" : `Expected ${preview.expectedNonce}`}</strong>
         </div>
       </div>
+      <div className="policy-pack-strip" aria-label="Applied policy packs">
+        <span>Applied policy packs</span>
+        <div>
+          {preview.policy.packs.map((pack) => (
+            <code key={pack}>{pack}</code>
+          ))}
+        </div>
+      </div>
+      {(preview.simulation.targetAnalysis || preview.simulation.stateDiff) && (
+        <div className="target-analysis">
+          <span className="eyebrow">Runtime target analysis</span>
+          {preview.simulation.targetAnalysis && (
+            <p>
+              Code <code>{preview.simulation.targetAnalysis.codeHash}</code> at block{" "}
+              <strong>{preview.simulation.targetAnalysis.blockNumber}</strong>
+            </p>
+          )}
+          {preview.simulation.targetAnalysis?.proxy && (
+            <p className="proxy-warning">
+              EIP-1967 proxy detected · implementation{" "}
+              <code>
+                {preview.simulation.targetAnalysis.proxy.implementation ?? "beacon-managed"}
+              </code>
+            </p>
+          )}
+          {preview.simulation.stateDiff && (
+            <p>
+              State diff: <strong>{preview.simulation.stateDiff.status}</strong>
+              {preview.simulation.stateDiff.accountsChanged !== undefined
+                ? ` · ${preview.simulation.stateDiff.accountsChanged} accounts · ${preview.simulation.stateDiff.storageSlotsChanged ?? 0} slots`
+                : ""}
+            </p>
+          )}
+        </div>
+      )}
       {(preview.inspection.riskSignals.length > 0 || preview.findings.length > 0) && (
         <div className="preflight-findings">
           {preview.inspection.riskSignals.map((signal) => (

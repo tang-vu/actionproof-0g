@@ -143,6 +143,20 @@ authoritative timestamped change log; no history or timestamps are fabricated.
 - Added a developer integration page and guide, capability discovery, live no-spend smoke coverage,
   API unit coverage, and desktop/mobile browser journeys for arbitrary custom calldata.
 
+## 2026-08-20 — Production control plane and integration hardening
+
+- Added PostgreSQL JSONB persistence, checksum-locked migrations, `SKIP LOCKED` job leases,
+  heartbeats, exhausted-work readiness, and fail-closed recovery that forbids automatic external
+  rebroadcast after an interrupted stage.
+- Added SHA-256 tenant API keys, constant-time authentication, tenant quota, structured/redacted audit
+  logs, and a transactional webhook outbox with HMAC, retry, DNS/private-network SSRF controls, and
+  delivery metrics.
+- Added modular ERC-20/asset/NFT/admin/proxy policy packs, EIP-1967 implementation/admin/beacon
+  inspection, code-hash/block provenance, and optional summarized `debug_traceCall` state footprint.
+- Added a provider-neutral remote signer protocol for KMS/HSM gateways with independent EIP-712
+  recovery, a typed TypeScript SDK, Prometheus metrics, proposed SLOs, production runbook, and an
+  honest independent-audit package. No external audit or SLA is claimed.
+
 ## Validation record
 
 The latest `pnpm verify` completed successfully on 2026-08-20 against the exact product-grade
@@ -153,13 +167,14 @@ funding, review, audit, and explicit authorization requirements.
 | ------------------------- | ---------------------------------------------------------------------------- |
 | Formatting                | Prettier + `forge fmt --check` passed                                        |
 | ESLint                    | Passed with zero warnings                                                    |
-| TypeScript                | Strict checks passed for Core, 0G adapters, API, and Web                     |
-| Core tests                | 14 passed                                                                    |
-| Adapter/API tests         | 17 adapter + 11 API tests passed                                             |
+| TypeScript                | Strict checks passed for Core, 0G adapters, SDK, API, and Web                |
+| Core tests                | 16 passed                                                                    |
+| Adapter/API/SDK tests     | 18 adapter + 13 API + 1 SDK tests passed                                     |
+| PostgreSQL integration    | 2 passed against PostgreSQL 17: lease/outbox atomicity and replica quota     |
 | Foundry unit/fuzz tests   | 31 passed; four fuzz properties ran 512 cases each                           |
-| Production builds         | Contracts, Core, 0G adapters, API, and Next.js passed; guard runtime 6,127 B |
+| Production builds         | Contracts, Core, 0G, SDK, API, Next.js passed; guard runtime 6,127 B         |
 | Playwright desktop/mobile | 12 passed across Chromium desktop and Pixel 7                                |
-| Secret scan               | 116 repository files checked; passed                                         |
+| Secret scan               | All tracked and unignored repository files checked; passed                   |
 | Production audit          | No known vulnerabilities found                                               |
 | Sandbox smoke             | Safe executed; unlimited approval blocked; tamper verification rejected      |
 | Deployment evidence       | Galileo deployed/source-verified; Mainnet dry-run passed, broadcast disabled |

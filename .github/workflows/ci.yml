@@ -13,10 +13,26 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: actionproof
+          POSTGRES_PASSWORD: actionproof-ci
+          POSTGRES_DB: actionproof
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U actionproof"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     env:
       ACTIONPROOF_MODE: sandbox
       NEXT_PUBLIC_ACTIONPROOF_MODE: sandbox
       NEXT_PUBLIC_API_URL: http://127.0.0.1:8787
+      DATABASE_URL: postgresql://actionproof:actionproof-ci@127.0.0.1:5432/actionproof
+      TEST_DATABASE_URL: postgresql://actionproof:actionproof-ci@127.0.0.1:5432/actionproof
     steps:
       - uses: actions/checkout@v4
 
@@ -41,6 +57,11 @@ jobs:
 
       - name: Verify deterministic build
         run: pnpm verify
+
+      - name: Verify PostgreSQL migrations and lease/outbox semantics
+        run: |
+          pnpm db:migrate
+          pnpm --filter @actionproof/api test:postgres
 
       - name: Upload browser failure evidence
         if: failure()

@@ -242,6 +242,12 @@ signing, broadcasting, or executing. A preview is never represented as an attest
 Use the [developer integration guide](docs/INTEGRATION.md) to progress the same unchanged envelope
 from no-spend preview to an authorized full evidence job and independent trace verification.
 
+The repository now also includes a typed `@actionproof/sdk`, PostgreSQL-backed lease queue,
+transactional webhook outbox, hashed tenant API keys and quota, protocol policy packs, EIP-1967
+proxy provenance, optional state-footprint tracing, Prometheus metrics, and a provider-neutral remote
+KMS/HSM signer boundary. These capabilities are opt-in; the public Galileo host remains read-only and
+reports its actual configured persistence/capabilities instead of implying production HA.
+
 ## Verification
 
 ```bash
@@ -311,6 +317,11 @@ Please report vulnerabilities privately as described in [SECURITY.md](SECURITY.m
 - [Three-minute demo](docs/DEMO_SCRIPT.md)
 - [Deployment and mainnet checklist](docs/DEPLOYMENT.md)
 - [Developer integration](docs/INTEGRATION.md)
+- [Production readiness](docs/PRODUCTION_READINESS.md)
+- [Webhook contract](docs/WEBHOOKS.md)
+- [Remote signer](docs/REMOTE_SIGNER.md)
+- [Service objectives](docs/SLO.md)
+- [Independent audit package](docs/AUDIT_PACKAGE.md)
 - [Build log](docs/BUILD_LOG.md)
 - [Judging evidence map](docs/JUDGING_MAP.md)
 - [Submission package](docs/SUBMISSION.md)

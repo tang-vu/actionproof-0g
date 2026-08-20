@@ -55,6 +55,12 @@ writes, `POST /v1/jobs` additionally requires a constant-time bearer-token compa
 server token fails closed; authorization headers are redacted from logs and the UI does not persist
 the token. This limits opportunistic funded-service abuse but does not save a fully compromised host.
 
+Production tenants authenticate with raw API keys whose SHA-256 digests alone are configured. Digest
+comparison is constant-time; global and tenant quotas both apply, and API-key headers are redacted.
+Terminal webhook state uses a transactional PostgreSQL outbox. Delivery is HTTPS-only, signed,
+retry-bounded, redirect-free, and rejects URL credentials plus private/loopback DNS results. DNS and
+CA compromise, tenant endpoint compromise, and malicious public destinations remain external risks.
+
 The public `POST /v1/preflight` route is intentionally unauthenticated and rate limited. It performs
 read-only RPC work only: no Compute request, Storage upload, signature, persistent trace, transaction,
 or target execution. Hosted browser access remains origin-restricted; the documented integration is
@@ -173,7 +179,7 @@ It has no general withdrawal function; failed target calls revert the whole tran
 - target state equality between simulation and later execution;
 - private reports or access-controlled storage;
 - threshold/multisignature verification, verifier staking, or decentralized policy governance;
-- key recovery, KMS/HSM integration, production database/queue/high availability;
+- provider-specific KMS key creation/recovery, database-region failover, or multi-region consensus;
 - ERC-8004 registration/reputation writes and production ERC-7857 oracle/TEE integration;
 - formal verification or a third-party audit.
 
@@ -183,3 +189,12 @@ Use a fresh low-value deployer, verifier, storage, and relayer separation where 
 deadlines short. Verify source and bytecode on ChainScan. Record deployment compiler/settings. Alert
 on verifier rotation, failed verification, nonce gaps, repeated malformed model output, storage root
 mismatch, and unexpected guard events. Never move valuable assets through the demo contracts.
+
+When enabled, state-footprint tracing is a summarized `debug_traceCall` observation, not semantic
+proof. Unsupported tracers remain labeled. EIP-1967 slots reveal common proxy control surfaces but do
+not detect every proxy pattern, diamond, metamorphic contract, or future implementation change.
+
+PostgreSQL leases prevent concurrent claims and are heartbeated. A crash after an external stage is
+not replayed automatically; the job fails with an explicit reconciliation requirement. Database
+operator compromise, incorrect manual reconciliation, backup loss, and region-wide failure remain
+trust and availability risks.
