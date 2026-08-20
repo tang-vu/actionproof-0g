@@ -46,6 +46,12 @@ export function IntegrationStatus() {
             <span>Paid/write path</span>
             <strong>{status.writesEnabled ? "Explicitly enabled" : "Disabled"}</strong>
           </div>
+          <div className="network-line">
+            <span>Instant preflight</span>
+            <strong>
+              {status.capabilities.instantPreflight ? "Available · no spend" : "Unavailable"}
+            </strong>
+          </div>
           <ul className="service-list">
             {status.services.map((service) => (
               <li key={service.id}>

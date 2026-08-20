@@ -1,8 +1,12 @@
 import type {
+  ActionInspection,
   ActionRequest,
+  AgentIdentityEvidence,
   Attestation,
   ChainReceipt,
+  Finding,
   RiskReport,
+  SimulationResult,
   StorageReceipt,
 } from "@actionproof/core";
 
@@ -30,6 +34,34 @@ export interface AnalysisJob {
   steps: JobStep[];
   traceId?: string;
   error?: { code: string; message: string; retryable: boolean };
+}
+
+export interface PreflightPreview {
+  schemaVersion: "1.0";
+  previewOnly: true;
+  mode: "live" | "sandbox";
+  actionHash: `0x${string}`;
+  policyVersion: "actionproof-policy/1";
+  inspection: ActionInspection;
+  simulation: SimulationResult;
+  agentIdentity?: AgentIdentityEvidence;
+  findings: Finding[];
+  disposition: "pass" | "review" | "block";
+  riskFloor: number;
+  blockingRuleIds: string[];
+  reasons: string[];
+  expectedNonce: string;
+  nonceMatches: boolean;
+  eligibleForFullAssessment: boolean;
+  policy: {
+    maxNativeValueWei: string;
+    maxRequestTtlMs: number;
+    targetAllowlistEnforced: boolean;
+    deniedSpenderCount: number;
+  };
+  analysisPerformed: ["calldata-inspection", "chain-simulation", "deterministic-policy"];
+  checkedAt: string;
+  notice: string;
 }
 
 export interface VerificationCheck {
@@ -68,6 +100,11 @@ export interface ActionTrace {
 export interface IntegrationStatus {
   mode: "live" | "sandbox";
   writesEnabled: boolean;
+  capabilities: {
+    instantPreflight: boolean;
+    fullAttestation: boolean;
+    publicVerification: boolean;
+  };
   operatorAuthorization: { required: boolean; configured: boolean };
   network: { name: string; chainId: number };
   services: Array<{

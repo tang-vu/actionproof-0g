@@ -27,15 +27,21 @@
 `https://chainscan-galileo.0g.ai/address/0x5f54d66a5dd8dceb1a5edcc638b31839810589bf`
 
 All three addresses above were independently checked for deployed bytecode and source verification.
-The live demo is published in guided read-only evidence mode: its Allow, Block, and Break cards lead
-directly to the preserved Galileo traces and live tamper verifier. The video placeholder remains
-blank until that separate publishing action is authorized.
+The live demo provides a no-spend preflight for arbitrary exact action envelopes plus guided access
+to preserved Galileo Allow, Block, and Break evidence. Public traffic can inspect, simulate, and run
+deterministic policy, but cannot trigger Compute, Storage, signing, or chain writes. The video
+placeholder remains blank until that separate publishing action is authorized.
 
 ## Short summary
 
 Autonomous agents can submit exact onchain calls faster than a human can review them, while a
 natural-language intent or a model's confidence cannot enforce what actually executes. ActionProof
 is a verifiable runtime firewall for that gap.
+
+Developers can first call the public Instant Preflight API with an arbitrary exact action. It decodes
+supported calldata, simulates from the guard, checks nonce/identity/policy, and returns a typed
+pass/review/block disposition without paid services or writes. An unchanged eligible envelope can
+then enter an authorized full assessment.
 
 For every proposed action it runs reproducible policy checks, simulates the downstream call, obtains
 a strict structured assessment through 0G Compute, uploads the canonical evidence to 0G Storage, and
@@ -158,6 +164,7 @@ Publishing this post is an external action and requires owner approval.
 - [x] Dangerous action is anchored and execution refusal is demonstrated.
 - [x] Tamper and replay failures are recorded.
 - [x] Live demo URL works in a fresh browser over HTTPS.
+- [x] Public no-spend preflight accepts arbitrary exact actions and is covered by live smoke tests.
 - [x] A captioned demo video can be reproduced locally with `pnpm demo:record`.
 - [ ] Demo video URL is owner-approved and published.
 - [x] Repository secret scan finds no private key or API key; no fabricated metrics/claims exist.

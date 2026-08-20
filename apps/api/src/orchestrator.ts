@@ -8,6 +8,7 @@ import {
   findingSchema,
   hashActionRequest,
   hashCanonical,
+  inspectAction,
   modelRiskAssessmentSchema,
   riskReportSchema,
   type ActionRequest,
@@ -29,6 +30,7 @@ import {
   stageIds,
   type ActionTrace,
   type AnalysisJob,
+  type PreflightPreview,
   type StageId,
   type StoredJob,
   type TraceVerification,
@@ -121,6 +123,63 @@ function fallbackComputeMetadata(now: Date, mode: Runtime["mode"]): RiskReport["
   };
 }
 
+function policyFinding(input: {
+  id: string;
+  severity: Finding["severity"];
+  title: string;
+  description: string;
+  evidence: string[];
+  blocking: boolean;
+}): Finding {
+  return findingSchema.parse({ ...input, category: "deterministic" });
+}
+
+async function resolveAgentIdentity(
+  runtime: Runtime,
+  config: AppConfig,
+  action: ActionRequest,
+): Promise<{ agentIdentity?: AgentIdentityEvidence; findings: Finding[] }> {
+  if (config.OG_AGENTIC_ID === undefined) return { findings: [] };
+
+  try {
+    const agentIdentity = await runtime.resolveAgentIdentity(action.agent);
+    if (!agentIdentity) throw new Error("Agentic ID resolver returned no evidence");
+    if (agentIdentity.matchesActionAgent) return { agentIdentity, findings: [] };
+    return {
+      agentIdentity,
+      findings: [
+        policyFinding({
+          id: "AGENTIC_ID_WALLET_MISMATCH",
+          severity: "critical",
+          title: "Agentic ID wallet mismatch",
+          description:
+            "The ERC-8004 agent wallet does not match the exact agent address in this action.",
+          evidence: [
+            `agentId=${agentIdentity.agentId}`,
+            `registered=${agentIdentity.agentWallet}`,
+            `action=${action.agent}`,
+          ],
+          blocking: true,
+        }),
+      ],
+    };
+  } catch (error) {
+    return {
+      findings: [
+        policyFinding({
+          id: "AGENTIC_ID_UNAVAILABLE",
+          severity: "critical",
+          title: "Configured Agentic ID could not be verified",
+          description:
+            "Optional identity enforcement was configured, so resolution failure blocks execution.",
+          evidence: [safeErrorMessage(error).slice(0, 500)],
+          blocking: true,
+        }),
+      ],
+    };
+  }
+}
+
 export class Orchestrator {
   readonly #config: AppConfig;
   readonly #runtime: Runtime;
@@ -161,6 +220,100 @@ export class Orchestrator {
 
   async nextNonce(agent: `0x${string}`, requester: `0x${string}`): Promise<bigint> {
     return this.#runtime.chain.nextNonce(agent, requester);
+  }
+
+  async preview(action: ActionRequest): Promise<PreflightPreview> {
+    const checkedAt = this.#clock();
+    const actionHash = hashActionRequest(action);
+    const [simulation, expectedNonce, identityResult] = await Promise.all([
+      this.#runtime.chain.simulateAction(action),
+      this.#runtime.chain.nextNonce(action.agent, action.requester),
+      resolveAgentIdentity(this.#runtime, this.#config, action),
+    ]);
+    const nonceMatches = BigInt(action.nonce) === expectedNonce;
+    const lifetimeMs = (action.expiresAt - action.issuedAt) * 1_000;
+    let findings = evaluateDeterministicPolicy(action, simulation, {
+      expectedChainId: this.#config.OG_CHAIN_ID,
+      now: Math.floor(checkedAt.getTime() / 1_000),
+      maxNativeValueWei: this.#config.maxNativeValueWei,
+      deniedSpenders: this.#config.deniedSpenders,
+      ...(this.#config.allowedTargets ? { allowedTargets: this.#config.allowedTargets } : {}),
+      duplicate: Boolean(this.#store.findTraceByActionHash(actionHash)),
+    });
+
+    if (!nonceMatches) {
+      findings = [
+        policyFinding({
+          id: "NONCE_MISMATCH",
+          severity: "critical",
+          title: "Guard nonce mismatch",
+          description: "The submitted nonce is not the guard's exact next nonce for this lane.",
+          evidence: [`submitted=${action.nonce}`, `expected=${expectedNonce}`],
+          blocking: true,
+        }),
+        ...findings,
+      ];
+    }
+    if (lifetimeMs > this.#config.JOB_TTL_MS) {
+      findings = [
+        policyFinding({
+          id: "REQUEST_TTL_EXCEEDED",
+          severity: "critical",
+          title: "Request validity window is too long",
+          description: "The action exceeds the configured maximum attestation lifetime.",
+          evidence: [`submittedMs=${lifetimeMs}`, `maximumMs=${this.#config.JOB_TTL_MS}`],
+          blocking: true,
+        }),
+        ...findings,
+      ];
+    }
+    findings = [...findings, ...identityResult.findings];
+
+    const weights: Record<Finding["severity"], number> = {
+      info: 0,
+      low: 10,
+      medium: 35,
+      high: 70,
+      critical: 100,
+    };
+    const riskFloor = findings.reduce(
+      (score, finding) => Math.max(score, weights[finding.severity]),
+      0,
+    );
+    const blockers = findings.filter((finding) => finding.blocking);
+    const disposition = blockers.length > 0 ? "block" : riskFloor >= 35 ? "review" : "pass";
+
+    return {
+      schemaVersion: "1.0",
+      previewOnly: true,
+      mode: this.#runtime.mode,
+      actionHash,
+      policyVersion: "actionproof-policy/1",
+      inspection: inspectAction(action),
+      simulation,
+      ...(identityResult.agentIdentity ? { agentIdentity: identityResult.agentIdentity } : {}),
+      findings,
+      disposition,
+      riskFloor,
+      blockingRuleIds: blockers.map((finding) => finding.id),
+      reasons:
+        findings.length > 0
+          ? findings.map((finding) => finding.title)
+          : ["No deterministic policy finding was raised."],
+      expectedNonce: expectedNonce.toString(),
+      nonceMatches,
+      eligibleForFullAssessment: blockers.length === 0,
+      policy: {
+        maxNativeValueWei: this.#config.maxNativeValueWei.toString(),
+        maxRequestTtlMs: this.#config.JOB_TTL_MS,
+        targetAllowlistEnforced: Boolean(this.#config.allowedTargets),
+        deniedSpenderCount: this.#config.deniedSpenders.size,
+      },
+      analysisPerformed: ["calldata-inspection", "chain-simulation", "deterministic-policy"],
+      checkedAt: checkedAt.toISOString(),
+      notice:
+        "Read-only preview: no 0G Compute inference, Storage upload, signature, chain write, or execution occurred.",
+    };
   }
 
   async verify(trace: ActionTrace): Promise<TraceVerification> {
@@ -216,46 +369,9 @@ export class Orchestrator {
         ...(this.#config.allowedTargets ? { allowedTargets: this.#config.allowedTargets } : {}),
         duplicate: false,
       });
-      let agentIdentity: AgentIdentityEvidence | undefined;
-      if (this.#config.OG_AGENTIC_ID !== undefined) {
-        try {
-          agentIdentity = await this.#runtime.resolveAgentIdentity(job.action.agent);
-          if (!agentIdentity) throw new Error("Agentic ID resolver returned no evidence");
-          if (!agentIdentity.matchesActionAgent) {
-            deterministic = [
-              ...deterministic,
-              findingSchema.parse({
-                id: "AGENTIC_ID_WALLET_MISMATCH",
-                severity: "critical",
-                category: "deterministic",
-                title: "Agentic ID wallet mismatch",
-                description:
-                  "The ERC-8004 agent wallet does not match the exact agent address in this action.",
-                evidence: [
-                  `agentId=${agentIdentity.agentId}`,
-                  `registered=${agentIdentity.agentWallet}`,
-                  `action=${job.action.agent}`,
-                ],
-                blocking: true,
-              }),
-            ];
-          }
-        } catch (error) {
-          deterministic = [
-            ...deterministic,
-            findingSchema.parse({
-              id: "AGENTIC_ID_UNAVAILABLE",
-              severity: "critical",
-              category: "deterministic",
-              title: "Configured Agentic ID could not be verified",
-              description:
-                "Optional identity enforcement was configured, so resolution failure blocks execution.",
-              evidence: [safeErrorMessage(error).slice(0, 500)],
-              blocking: true,
-            }),
-          ];
-        }
-      }
+      const identityResult = await resolveAgentIdentity(this.#runtime, this.#config, job.action);
+      const agentIdentity = identityResult.agentIdentity;
+      deterministic = [...deterministic, ...identityResult.findings];
       await this.#complete(
         job,
         activeStage,

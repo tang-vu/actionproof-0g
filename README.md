@@ -232,6 +232,16 @@ pnpm demo:live -- block         # one paid block scenario + tamper
 Live traces persist under the ignored `API_DATA_DIR`; `pnpm dev` serves them through the same public
 verification UI.
 
+## Developer integration
+
+`POST /v1/preflight` is the public, read-only integration surface for arbitrary exact action
+envelopes. It decodes known selectors, simulates from the guard context, and returns deterministic
+`pass`, `review`, or `block` policy disposition without calling 0G Compute, uploading to Storage,
+signing, broadcasting, or executing. A preview is never represented as an attestation.
+
+Use the [developer integration guide](docs/INTEGRATION.md) to progress the same unchanged envelope
+from no-spend preview to an authorized full evidence job and independent trace verification.
+
 ## Verification
 
 ```bash
@@ -300,6 +310,7 @@ Please report vulnerabilities privately as described in [SECURITY.md](SECURITY.m
 - [Threat model](docs/THREAT_MODEL.md)
 - [Three-minute demo](docs/DEMO_SCRIPT.md)
 - [Deployment and mainnet checklist](docs/DEPLOYMENT.md)
+- [Developer integration](docs/INTEGRATION.md)
 - [Build log](docs/BUILD_LOG.md)
 - [Judging evidence map](docs/JUDGING_MAP.md)
 - [Submission package](docs/SUBMISSION.md)

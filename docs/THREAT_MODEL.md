@@ -55,6 +55,12 @@ writes, `POST /v1/jobs` additionally requires a constant-time bearer-token compa
 server token fails closed; authorization headers are redacted from logs and the UI does not persist
 the token. This limits opportunistic funded-service abuse but does not save a fully compromised host.
 
+The public `POST /v1/preflight` route is intentionally unauthenticated and rate limited. It performs
+read-only RPC work only: no Compute request, Storage upload, signature, persistent trace, transaction,
+or target execution. Hosted browser access remains origin-restricted; the documented integration is
+server-to-server. Distributed denial of service and upstream RPC exhaustion still require an edge
+WAF, per-tenant quotas, and production observability beyond the application-level limiter.
+
 ### Deterministic analysis
 
 Critical rules block before inference. ABI decoding is attempted only for recognized selectors;
@@ -156,6 +162,8 @@ It has no general withdrawal function; failed target calls revert the whole tran
 | Downstream target reverts                                     | Execution transaction reverts; anchor remains, execution bit rolls back |
 | Mainnet config accidentally selected                          | Startup/write gates require explicit mainnet broadcast opt-in           |
 | Anonymous caller targets funded live API                      | Live write gate plus separate operator bearer token rejects the request |
+| Preflight caller attempts to trigger paid or write stages     | Dedicated route performs read-only simulation and policy only           |
+| Unknown selector is submitted through preflight               | High-risk review floor; never reported as a clean pass                  |
 | ERC-8004 wallet differs or lookup fails while enforced        | Deterministic identity finding forces block                             |
 
 ## Out of scope / known limitations

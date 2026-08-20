@@ -14,22 +14,10 @@ import type {
   SimulationResult,
   Verdict,
 } from "./schemas.js";
+import { inspectAction, SELECTORS } from "./inspection.js";
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 const UINT256_MAX = (1n << 256n) - 1n;
-
-export const SELECTORS = {
-  approve: "0x095ea7b3",
-  setApprovalForAll: "0xa22cb465",
-  transfer: "0xa9059cbb",
-  transferFrom: "0x23b872dd",
-  transferOwnership: "0xf2fde38b",
-  renounceOwnership: "0x715018a6",
-  changeAdmin: "0x8f283970",
-  upgradeTo: "0x3659cfe6",
-  upgradeToAndCall: "0x4f1ef286",
-  functionDelegateCall: "0x4bb5274a",
-} as const satisfies Record<string, Hex>;
 
 const ADMIN_SELECTORS = new Map<string, string>([
   [SELECTORS.transferOwnership, "transferOwnership(address)"],
@@ -77,6 +65,31 @@ export function evaluateDeterministicPolicy(
   const findings: Finding[] = [];
   const actionCalldata = action.calldata as Hex;
   const selector = selectorOf(actionCalldata);
+  const inspection = inspectAction(action);
+
+  if (inspection.decodingError) {
+    findings.push(
+      finding(
+        "MALFORMED_CALLDATA",
+        "critical",
+        "Malformed transaction calldata",
+        "The exact calldata is too short or cannot be decoded for its recognized selector.",
+        [inspection.decodingError],
+        true,
+      ),
+    );
+  } else if (!inspection.recognized) {
+    findings.push(
+      finding(
+        "UNKNOWN_SELECTOR",
+        "high",
+        "Unknown function selector",
+        "No built-in ABI decoder recognizes this selector. Protocol-specific review is required.",
+        [`selector=${inspection.selector}`],
+        false,
+      ),
+    );
+  }
 
   if (action.destinationChainId !== context.expectedChainId) {
     findings.push(

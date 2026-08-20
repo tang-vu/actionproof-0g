@@ -12,7 +12,7 @@ import { buildApp } from "../src/app.js";
 import { parseEnv, type AppConfig } from "../src/config.js";
 import { createSandboxRuntime, type Runtime } from "../src/runtime.js";
 import { JsonFileStateStore, MemoryStateStore } from "../src/store.js";
-import type { ActionTrace, AnalysisJob } from "../src/types.js";
+import type { ActionTrace, AnalysisJob, PreflightPreview } from "../src/types.js";
 
 const AGENT = getAddress("0xa17e000000000000000000000000000000000001");
 const REQUESTER = getAddress("0xa17e000000000000000000000000000000000002");
@@ -138,6 +138,51 @@ async function getTrace(app: FastifyInstance, job: AnalysisJob): Promise<ActionT
 }
 
 describe("ActionProof API sandbox pipeline", () => {
+  it("previews arbitrary actions without inference, storage, signing, or writes", async () => {
+    const app = await createApp();
+    const safeResponse = await app.inject({
+      method: "POST",
+      url: "/v1/preflight",
+      payload: { action: action({ nonce: "0" }) },
+    });
+    expect(safeResponse.statusCode).toBe(200);
+    const safe = safeResponse.json() as PreflightPreview;
+    expect(safe).toMatchObject({
+      schemaVersion: "1.0",
+      previewOnly: true,
+      mode: "sandbox",
+      disposition: "pass",
+      nonceMatches: true,
+      eligibleForFullAssessment: true,
+      inspection: { recognized: true, signature: "increment()" },
+      simulation: { success: true, networkChainId: 16602 },
+    });
+    expect(safe.analysisPerformed).toEqual([
+      "calldata-inspection",
+      "chain-simulation",
+      "deterministic-policy",
+    ]);
+    expect(safe.notice).toContain("no 0G Compute inference");
+
+    const dangerousResponse = await app.inject({
+      method: "POST",
+      url: "/v1/preflight",
+      payload: { action: action({ nonce: "0", dangerous: true }) },
+    });
+    const dangerous = dangerousResponse.json() as PreflightPreview;
+    expect(dangerous.disposition).toBe("block");
+    expect(dangerous.inspection).toMatchObject({
+      signature: "approve(address,uint256)",
+      category: "token-approval",
+    });
+    expect(dangerous.blockingRuleIds).toEqual(
+      expect.arrayContaining(["UNLIMITED_ERC20_APPROVAL", "DENIED_APPROVAL_SPENDER"]),
+    );
+
+    const traces = await app.inject({ method: "GET", url: "/v1/traces" });
+    expect(traces.json()).toEqual({ traces: [] });
+  });
+
   it("executes an allowed action, anchors a blocked action, and detects tampering", async () => {
     const app = await createApp();
     const safeNonce = await nextNonce(app);
@@ -383,6 +428,19 @@ describe("ActionProof API sandbox pipeline", () => {
     });
     const sandbox = createSandboxRuntime(parsed);
     const app = await createApp({ ...sandbox, mode: "live" }, parsed);
+    const preflight = await app.inject({
+      method: "POST",
+      url: "/v1/preflight",
+      payload: { action: action({ nonce: "0" }) },
+    });
+    expect(preflight.statusCode).toBe(200);
+    expect(preflight.json()).toMatchObject({
+      mode: "live",
+      previewOnly: true,
+      disposition: "pass",
+      eligibleForFullAssessment: true,
+    });
+
     const response = await app.inject({
       method: "POST",
       url: "/v1/jobs",

@@ -1,8 +1,12 @@
 import type {
+  ActionInspection,
   ActionRequest,
+  AgentIdentityEvidence,
   Attestation,
   ChainReceipt,
+  Finding,
   RiskReport,
+  SimulationResult,
   StorageReceipt,
 } from "@actionproof/core";
 import type { Hex } from "viem";
@@ -41,6 +45,34 @@ export interface AnalysisJob {
   error?: JobError;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface PreflightPreview {
+  schemaVersion: "1.0";
+  previewOnly: true;
+  mode: "live" | "sandbox";
+  actionHash: Hex;
+  policyVersion: "actionproof-policy/1";
+  inspection: ActionInspection;
+  simulation: SimulationResult;
+  agentIdentity?: AgentIdentityEvidence;
+  findings: Finding[];
+  disposition: "pass" | "review" | "block";
+  riskFloor: number;
+  blockingRuleIds: string[];
+  reasons: string[];
+  expectedNonce: string;
+  nonceMatches: boolean;
+  eligibleForFullAssessment: boolean;
+  policy: {
+    maxNativeValueWei: string;
+    maxRequestTtlMs: number;
+    targetAllowlistEnforced: boolean;
+    deniedSpenderCount: number;
+  };
+  analysisPerformed: ["calldata-inspection", "chain-simulation", "deterministic-policy"];
+  checkedAt: string;
+  notice: string;
 }
 
 export interface StoredJob extends AnalysisJob {

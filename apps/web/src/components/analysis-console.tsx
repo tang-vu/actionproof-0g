@@ -8,7 +8,7 @@ import { useAccount } from "wagmi";
 import type { ActionRequest } from "@actionproof/core";
 
 import { api } from "../lib/api";
-import type { ActionTrace, AnalysisJob, JobStep } from "../lib/types";
+import type { ActionTrace, AnalysisJob, JobStep, PreflightPreview } from "../lib/types";
 
 const DEMO_AGENT = getAddress(
   process.env.NEXT_PUBLIC_ACTIONPROOF_AGENT_ADDRESS ?? "0xa17e000000000000000000000000000000000001",
@@ -45,10 +45,10 @@ const erc20Abi = [
   },
 ] as const;
 
-type Scenario = "safe" | "dangerous";
+type Scenario = "safe" | "dangerous" | "custom";
 type RuntimeAccess = "checking" | "sandbox" | "read-only" | "operator" | "unavailable";
 
-const PRESERVED_TRACES: Record<Scenario, string | undefined> = {
+const PRESERVED_TRACES: Partial<Record<Scenario, string | undefined>> = {
   safe: process.env.NEXT_PUBLIC_SAFE_TRACE_ID,
   dangerous: process.env.NEXT_PUBLIC_BLOCK_TRACE_ID,
 };
@@ -71,10 +71,10 @@ function scenarioAction(
     version: "1",
     agent: DEMO_AGENT,
     requester,
-    target: scenario === "safe" ? DEMO_COUNTER : DEMO_TOKEN,
+    target: scenario === "dangerous" ? DEMO_TOKEN : DEMO_COUNTER,
     value: "0",
     calldata:
-      scenario === "safe"
+      scenario !== "dangerous"
         ? encodeFunctionData({ abi: demoCounterAbi, functionName: "increment" })
         : encodeFunctionData({
             abi: erc20Abi,
@@ -84,7 +84,9 @@ function scenarioAction(
     intent:
       scenario === "safe"
         ? "Increment the valueless ActionProof demo counter once"
-        : "Approve the demo operator to manage test tokens",
+        : scenario === "dangerous"
+          ? "Approve the demo operator to manage test tokens"
+          : "Describe the exact outcome this agent transaction should produce",
     destinationChainId: DESTINATION_CHAIN_ID,
     nonce: String(issuedAt),
     issuedAt,
@@ -98,6 +100,9 @@ export function AnalysisConsole({ initialIssuedAt }: { initialIssuedAt: number }
   const [action, setAction] = useState(() => scenarioAction("safe", DEMO_AGENT, initialIssuedAt));
   const [job, setJob] = useState<AnalysisJob | null>(null);
   const [trace, setTrace] = useState<ActionTrace | null>(null);
+  const [preview, setPreview] = useState<PreflightPreview | null>(null);
+  const [previewBusy, setPreviewBusy] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [nonceLoading, setNonceLoading] = useState(false);
   const [runtimeAccess, setRuntimeAccess] = useState<RuntimeAccess>(() =>
@@ -129,6 +134,8 @@ export function AnalysisConsole({ initialIssuedAt }: { initialIssuedAt: number }
     setAction(next);
     setJob(null);
     setTrace(null);
+    setPreview(null);
+    setPreviewError(null);
     setSubmitError(null);
     setNonceLoading(true);
     void api
@@ -163,6 +170,25 @@ export function AnalysisConsole({ initialIssuedAt }: { initialIssuedAt: number }
   }, [job]);
 
   const steps = job?.steps ?? initialSteps;
+  const visibleSteps =
+    preview && !job
+      ? initialSteps.map((step) =>
+          step.id === "preflight" || step.id === "simulation"
+            ? {
+                ...step,
+                status: "complete" as const,
+                detail:
+                  step.id === "preflight"
+                    ? "Selector decoded and deterministic policy evaluated."
+                    : "Read-only chain simulation completed.",
+              }
+            : {
+                ...step,
+                status: "skipped" as const,
+                detail: "Not run in the no-spend preview.",
+              },
+        )
+      : steps;
   const busy = job && !["completed", "failed"].includes(job.status);
   const actionPreview = useMemo(
     () => [
@@ -178,6 +204,7 @@ export function AnalysisConsole({ initialIssuedAt }: { initialIssuedAt: number }
   const submit = useCallback(async () => {
     setSubmitError(null);
     setTrace(null);
+    setPreview(null);
     try {
       setJob(
         await api.createJob(
@@ -190,9 +217,25 @@ export function AnalysisConsole({ initialIssuedAt }: { initialIssuedAt: number }
     }
   }, [action, operatorToken, runtimeAccess]);
 
+  const runPreview = useCallback(async () => {
+    setPreviewBusy(true);
+    setPreviewError(null);
+    setSubmitError(null);
+    setJob(null);
+    setTrace(null);
+    try {
+      setPreview(await api.preview({ action }));
+    } catch (error) {
+      setPreview(null);
+      setPreviewError(error instanceof Error ? error.message : "Could not run instant preflight");
+    } finally {
+      setPreviewBusy(false);
+    }
+  }, [action]);
+
   const preservedTraceHref = PRESERVED_TRACES[scenario]
     ? `/trace/${PRESERVED_TRACES[scenario]}`
-    : "/history";
+    : undefined;
   const canSubmit =
     runtimeAccess === "sandbox" || (runtimeAccess === "operator" && operatorToken.length > 0);
 
@@ -228,6 +271,15 @@ export function AnalysisConsole({ initialIssuedAt }: { initialIssuedAt: number }
           >
             <span className="scenario-signal danger" /> Unlimited approval
           </button>
+          <button
+            className={scenario === "custom" ? "active custom" : ""}
+            type="button"
+            role="tab"
+            aria-selected={scenario === "custom"}
+            onClick={() => setScenario("custom")}
+          >
+            <span className="scenario-signal custom" /> Custom transaction
+          </button>
         </div>
 
         <label className="field intent-field">
@@ -239,6 +291,67 @@ export function AnalysisConsole({ initialIssuedAt }: { initialIssuedAt: number }
           />
         </label>
 
+        {scenario === "custom" && (
+          <div className="custom-envelope" aria-label="Custom transaction fields">
+            <label className="field">
+              <span>Agent address</span>
+              <input
+                value={action.agent}
+                spellCheck={false}
+                onChange={(event) =>
+                  setAction({ ...action, agent: event.target.value as `0x${string}` })
+                }
+              />
+            </label>
+            <label className="field">
+              <span>Requester address</span>
+              <input
+                value={action.requester}
+                spellCheck={false}
+                onChange={(event) =>
+                  setAction({ ...action, requester: event.target.value as `0x${string}` })
+                }
+              />
+            </label>
+            <label className="field">
+              <span>Target contract</span>
+              <input
+                value={action.target}
+                spellCheck={false}
+                onChange={(event) =>
+                  setAction({ ...action, target: event.target.value as `0x${string}` })
+                }
+              />
+            </label>
+            <div className="custom-envelope-row">
+              <label className="field">
+                <span>Native value · wei</span>
+                <input
+                  inputMode="numeric"
+                  value={action.value}
+                  onChange={(event) => setAction({ ...action, value: event.target.value })}
+                />
+              </label>
+              <label className="field">
+                <span>Guard nonce</span>
+                <input
+                  inputMode="numeric"
+                  value={action.nonce}
+                  onChange={(event) => setAction({ ...action, nonce: event.target.value })}
+                />
+              </label>
+            </div>
+            <label className="field calldata-field">
+              <span>Exact calldata</span>
+              <textarea
+                value={action.calldata}
+                spellCheck={false}
+                onChange={(event) => setAction({ ...action, calldata: event.target.value })}
+              />
+            </label>
+          </div>
+        )}
+
         <dl className="envelope-list">
           {actionPreview.map(([label, value]) => (
             <div key={label}>
@@ -248,15 +361,18 @@ export function AnalysisConsole({ initialIssuedAt }: { initialIssuedAt: number }
           ))}
         </dl>
 
-        <details className="calldata-box">
-          <summary>Calldata · {action.calldata.slice(0, 10)}</summary>
-          <code>{action.calldata}</code>
-        </details>
+        {scenario !== "custom" && (
+          <details className="calldata-box">
+            <summary>Calldata · {action.calldata.slice(0, 10)}</summary>
+            <code>{action.calldata}</code>
+          </details>
+        )}
 
         <div className="callout neutral">
           <span className="callout-icon">i</span>
-          Demo contracts and valueless assets only. An allow verdict is experimental evidence—not a
-          safety guarantee.
+          {scenario === "custom"
+            ? "Preview accepts arbitrary calldata without signing or broadcasting. Full assessment remains constrained by the deployed policy."
+            : "Demo contracts and valueless assets only. An allow verdict is experimental evidence—not a safety guarantee."}
         </div>
 
         {runtimeAccess === "operator" && (
@@ -274,28 +390,57 @@ export function AnalysisConsole({ initialIssuedAt }: { initialIssuedAt: number }
         )}
 
         {runtimeAccess === "read-only" ? (
-          <Link className="primary-action" href={preservedTraceHref}>
-            Inspect {scenario === "safe" ? "safe" : "blocked"} Galileo proof
-            <span aria-hidden="true">↗</span>
-          </Link>
-        ) : (
-          <button
-            className="primary-action"
-            type="button"
-            disabled={Boolean(busy) || nonceLoading || !canSubmit}
-            onClick={submit}
-          >
-            {runtimeAccess === "checking"
-              ? "Checking runtime gate…"
-              : runtimeAccess === "unavailable"
-                ? "Submission gate unavailable"
+          <div className="action-stack">
+            <button
+              className="primary-action"
+              type="button"
+              disabled={previewBusy || nonceLoading}
+              onClick={runPreview}
+            >
+              {previewBusy
+                ? "Running read-only simulation…"
                 : nonceLoading
                   ? "Reading guard nonce…"
-                  : busy
-                    ? "Analyzing exact action…"
-                    : "Analyze & attest"}
-            <span aria-hidden="true">→</span>
-          </button>
+                  : "Run instant preflight"}
+              <span aria-hidden="true">→</span>
+            </button>
+            {preservedTraceHref && (
+              <Link className="preserved-proof-link" href={preservedTraceHref}>
+                Inspect preserved {scenario === "safe" ? "allow" : "block"} proof
+                <span aria-hidden="true">↗</span>
+              </Link>
+            )}
+          </div>
+        ) : (
+          <div className="action-stack">
+            <button
+              className="primary-action"
+              type="button"
+              disabled={Boolean(busy) || nonceLoading || !canSubmit}
+              onClick={submit}
+            >
+              {runtimeAccess === "checking"
+                ? "Checking runtime gate…"
+                : runtimeAccess === "unavailable"
+                  ? "Submission gate unavailable"
+                  : nonceLoading
+                    ? "Reading guard nonce…"
+                    : busy
+                      ? "Analyzing exact action…"
+                      : "Analyze & attest"}
+              <span aria-hidden="true">→</span>
+            </button>
+            {runtimeAccess !== "unavailable" && runtimeAccess !== "checking" && (
+              <button
+                className="preview-action"
+                type="button"
+                disabled={previewBusy || Boolean(busy) || nonceLoading}
+                onClick={runPreview}
+              >
+                {previewBusy ? "Previewing…" : "Preview only · no writes"}
+              </button>
+            )}
+          </div>
         )}
         {runtimeAccess === "read-only" && (
           <div className="callout neutral">
@@ -303,8 +448,9 @@ export function AnalysisConsole({ initialIssuedAt }: { initialIssuedAt: number }
             <div>
               <strong>Public evidence mode</strong>
               <p>
-                Paid writes are disabled to protect server-held testnet balances. The button opens
-                the preserved real Galileo proof for this scenario; the tamper test remains live.
+                Instant preflight decodes calldata and simulates on Galileo without Compute,
+                Storage, signatures, or transactions. Preserved proofs remain available for the
+                complete pipeline.
               </p>
             </div>
           </div>
@@ -324,6 +470,7 @@ export function AnalysisConsole({ initialIssuedAt }: { initialIssuedAt: number }
           </div>
         )}
         {submitError && <div className="inline-error prominent">{submitError}</div>}
+        {previewError && <div className="inline-error prominent">{previewError}</div>}
       </section>
 
       <section className="proof-pipeline panel" aria-live="polite">
@@ -335,7 +482,7 @@ export function AnalysisConsole({ initialIssuedAt }: { initialIssuedAt: number }
           {job && <code className="job-id">{job.id.slice(0, 12)}</code>}
         </div>
         <ol className="pipeline-list">
-          {steps.map((step, index) => (
+          {visibleSteps.map((step, index) => (
             <li className={step.status} key={step.id}>
               <span className="step-index">
                 {step.status === "complete" ? "✓" : step.status === "failed" ? "!" : index + 1}
@@ -349,7 +496,7 @@ export function AnalysisConsole({ initialIssuedAt }: { initialIssuedAt: number }
           ))}
         </ol>
 
-        {!job && (
+        {!job && !preview && (
           <div className="empty-proof">
             <div className="proof-glyph" aria-hidden="true">
               <span />
@@ -357,7 +504,7 @@ export function AnalysisConsole({ initialIssuedAt }: { initialIssuedAt: number }
             <h3>No proof yet</h3>
             <p>
               {runtimeAccess === "read-only"
-                ? "Choose a scenario and open its preserved Galileo proof. No new run is implied."
+                ? "Run an instant no-spend preflight or inspect a preserved Galileo proof."
                 : "Select a scenario and submit the exact envelope. No stage is implied until it runs."}
             </p>
           </div>
@@ -374,6 +521,7 @@ export function AnalysisConsole({ initialIssuedAt }: { initialIssuedAt: number }
         )}
 
         {trace && <VerdictSummary trace={trace} />}
+        {preview && <PreflightSummary preview={preview} />}
       </section>
     </div>
   );
@@ -388,6 +536,80 @@ function defaultStepDetail(id: JobStep["id"]) {
     anchoring: "EIP-712 signature and report-root event",
     execution: "Safe verdict only; replay protected",
   }[id];
+}
+
+function PreflightSummary({ preview }: { preview: PreflightPreview }) {
+  const label =
+    preview.disposition === "pass"
+      ? "Policy pass"
+      : preview.disposition === "review"
+        ? "Review required"
+        : "Policy block";
+  return (
+    <article className={`preflight-card ${preview.disposition}`}>
+      <div className="preflight-topline">
+        <span>{label}</span>
+        <code>Risk floor {preview.riskFloor}/100</code>
+      </div>
+      <div className="decoded-call">
+        <span className="eyebrow">Decoded call · selector-based</span>
+        <h3>{preview.inspection.signature ?? preview.inspection.selector}</h3>
+        <p>{preview.inspection.summary}</p>
+        {preview.inspection.arguments.length > 0 && (
+          <dl>
+            {preview.inspection.arguments.map((argument) => (
+              <div key={argument.name}>
+                <dt>
+                  {argument.name} <small>{argument.type}</small>
+                </dt>
+                <dd title={argument.value}>{argument.value}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
+      </div>
+      <div className="preflight-metrics">
+        <div>
+          <span>Simulation</span>
+          <strong>{preview.simulation.success ? "Succeeded" : "Reverted"}</strong>
+        </div>
+        <div>
+          <span>Target source</span>
+          <strong>{preview.simulation.targetVerification}</strong>
+        </div>
+        <div>
+          <span>Guard nonce</span>
+          <strong>{preview.nonceMatches ? "Exact" : `Expected ${preview.expectedNonce}`}</strong>
+        </div>
+      </div>
+      {(preview.inspection.riskSignals.length > 0 || preview.findings.length > 0) && (
+        <div className="preflight-findings">
+          {preview.inspection.riskSignals.map((signal) => (
+            <p className="risk-signal" key={signal}>
+              {signal}
+            </p>
+          ))}
+          {preview.findings.map((finding) => (
+            <div className={`preview-finding ${finding.severity}`} key={finding.id}>
+              <span>{finding.blocking ? "BLOCK" : finding.severity}</span>
+              <div>
+                <strong>{finding.title}</strong>
+                <p>{finding.description}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="preview-boundary">
+        <strong>
+          {preview.eligibleForFullAssessment
+            ? "Eligible for the full evidence pipeline"
+            : "Full assessment is not eligible until blocking findings are resolved"}
+        </strong>
+        <p>{preview.notice}</p>
+      </div>
+    </article>
+  );
 }
 
 function VerdictSummary({ trace }: { trace: ActionTrace }) {

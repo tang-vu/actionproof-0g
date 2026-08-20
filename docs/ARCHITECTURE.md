@@ -81,6 +81,17 @@ keccak256(abi.encode(
 
 Changing one bound field changes `actionHash` before any model or storage operation is considered.
 
+## Instant Preflight boundary
+
+`POST /v1/preflight` is a separate, read-only product path for arbitrary exact action envelopes. It
+reuses the same action schema and hash, resolves the current nonce and optional ERC-8004 wallet,
+simulates from the guard address, decodes supported selectors, and runs deterministic policy. It
+returns `pass`, `review`, or `block` plus structured findings and the exact analysis boundary.
+
+Preflight never calls 0G Compute, uploads to Storage, signs an attestation, persists a trace, sends a
+transaction, or executes the target. It is an early integration gate, not proof. Only an unchanged
+envelope that enters the full pipeline can produce the evidence and enforcement described below.
+
 ## Evidence construction
 
 The API validates the action, simulates from the guard address (the actual downstream `msg.sender`),

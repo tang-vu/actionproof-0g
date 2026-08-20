@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { canonicalize } from "./canonical.js";
 import { createAttestation, verdictToCode } from "./eip712.js";
 import { hashActionRequest, hashCanonical } from "./hashing.js";
+import { inspectAction } from "./inspection.js";
 import { decideFinalVerdict, evaluateDeterministicPolicy } from "./policy.js";
 import type { ActionRequest, ModelRiskAssessment, SimulationResult } from "./schemas.js";
 
@@ -18,7 +19,7 @@ function action(overrides: Partial<ActionRequest> = {}): ActionRequest {
     requester,
     target,
     value: "0",
-    calldata: "0x12345678",
+    calldata: "0xd09de08a",
     intent: "Increment the valueless demo counter once",
     destinationChainId: 16602,
     nonce: "0",
@@ -150,5 +151,63 @@ describe("deterministic policy", () => {
       },
     );
     expect(decideFinalVerdict(findings, model).verdict).toBe("block");
+  });
+});
+
+describe("action inspection", () => {
+  it("decodes an unlimited approval into human-checkable arguments and risk signals", () => {
+    const calldata = encodeFunctionData({
+      abi: [
+        {
+          type: "function",
+          name: "approve",
+          stateMutability: "nonpayable",
+          inputs: [
+            { name: "spender", type: "address" },
+            { name: "amount", type: "uint256" },
+          ],
+          outputs: [{ name: "", type: "bool" }],
+        },
+      ],
+      functionName: "approve",
+      args: [spender, maxUint256],
+    });
+    const inspection = inspectAction(action({ calldata }));
+
+    expect(inspection).toMatchObject({
+      recognized: true,
+      signature: "approve(address,uint256)",
+      category: "token-approval",
+    });
+    expect(inspection.arguments).toEqual([
+      { name: "spender", type: "address", value: spender },
+      { name: "amount", type: "uint256", value: maxUint256.toString() },
+    ]);
+    expect(inspection.riskSignals).toContain("Unlimited ERC-20 allowance.");
+  });
+
+  it("labels unknown selectors without pretending to understand their semantics", () => {
+    expect(inspectAction(action({ calldata: "0x12345678" }))).toMatchObject({
+      selector: "0x12345678",
+      recognized: false,
+      category: "unknown",
+    });
+  });
+
+  it("rejects trailing bytes on a recognized no-argument call", () => {
+    const inspection = inspectAction(action({ calldata: "0xd09de08a00" }));
+    expect(inspection).toMatchObject({
+      recognized: true,
+      signature: "increment()",
+      category: "contract-call",
+    });
+    expect(inspection.decodingError).toContain("selector-only calldata");
+  });
+
+  it("requires review for receive and fallback behavior", () => {
+    expect(inspectAction(action({ calldata: "0x" }))).toMatchObject({
+      recognized: false,
+      category: "native-transfer",
+    });
   });
 });

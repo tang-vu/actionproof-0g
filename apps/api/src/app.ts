@@ -34,6 +34,7 @@ const createJobSchema = z
     execute: z.boolean().default(false),
   })
   .strict();
+const preflightSchema = z.object({ action: actionRequestSchema.strict() }).strict();
 const verificationSchema = z
   .object({ mutation: z.enum(["calldata", "reportRoot", "nonce"]).optional() })
   .strict();
@@ -227,6 +228,11 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   app.get("/v1/integrations", async () => ({
     mode: runtime.mode,
     writesEnabled: runtime.mode === "live" && config.liveWriteEnabled,
+    capabilities: {
+      instantPreflight: true,
+      fullAttestation: runtime.mode === "sandbox" || config.liveWriteEnabled,
+      publicVerification: true,
+    },
     operatorAuthorization: {
       required: runtime.mode === "live" && config.liveWriteEnabled,
       configured: Boolean(config.ACTIONPROOF_OPERATOR_TOKEN),
@@ -251,6 +257,11 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
       chainId: config.OG_CHAIN_ID,
       note: "Submit this exact nonce; POST /v1/jobs never rewrites it.",
     };
+  });
+
+  app.post("/v1/preflight", async (request) => {
+    const { action } = preflightSchema.parse(request.body);
+    return orchestrator.preview(action);
   });
 
   app.post("/v1/jobs", async (request, reply) => {

@@ -13,6 +13,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <nav className="main-nav" aria-label="Primary navigation">
           <Link href="/analyze">Analyze</Link>
           <Link href="/history">History</Link>
+          <Link href="/developers">Developers</Link>
           <Link href="/architecture">Architecture</Link>
         </nav>
         <div className="topbar-actions">
@@ -33,6 +34,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             0G docs ↗
           </a>
           <Link href="/architecture">Security model</Link>
+          <Link href="/developers">Developer API</Link>
         </div>
       </footer>
     </div>

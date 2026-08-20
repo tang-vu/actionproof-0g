@@ -14,6 +14,19 @@ interface AgenticEvidenceFile {
 interface TraceSummary {
   id: string;
   mode: string;
+  action: {
+    version: "1";
+    agent: string;
+    requester: string;
+    target: string;
+    value: string;
+    calldata: string;
+    intent: string;
+    destinationChainId: number;
+    nonce: string;
+    issuedAt: number;
+    expiresAt: number;
+  };
   report: { verdict: string };
   execution: { status: string };
   verification: { valid: boolean };
@@ -22,6 +35,11 @@ interface TraceSummary {
 interface IntegrationStatus {
   mode: string;
   writesEnabled: boolean;
+  capabilities: {
+    instantPreflight: boolean;
+    fullAttestation: boolean;
+    publicVerification: boolean;
+  };
   operatorAuthorization: { required: boolean; configured: boolean };
   services: Array<{ id: string; status: string }>;
 }
@@ -89,6 +107,14 @@ invariant(
   integrations.operatorAuthorization.required === false,
   "read-only deployment unexpectedly requests operator authorization",
 );
+invariant(
+  integrations.capabilities.instantPreflight && integrations.capabilities.publicVerification,
+  "public read-only product capabilities are unavailable",
+);
+invariant(
+  integrations.capabilities.fullAttestation === false,
+  "public deployment unexpectedly exposes full attestation",
+);
 for (const id of ["chain", "compute", "storage"]) {
   invariant(
     integrations.services.some((service) => service.id === id && service.status === "available"),
@@ -129,6 +155,41 @@ for (const [traceId, verdict, execution] of expected) {
   invariant(html.includes(traceId), `${traceId} is not rendered on its public trace page`);
 }
 
+const safeTrace = before.traces.find((candidate) => candidate.id === evidence.safe.traceId);
+invariant(safeTrace, "safe trace is unavailable for the preflight probe");
+const nonceResponse = await get(
+  origin,
+  `/v1/nonces/${safeTrace.action.requester}?agent=${safeTrace.action.agent}`,
+);
+const currentNonce = (await nonceResponse.json()) as { nonce: string };
+const now = Math.floor(Date.now() / 1_000);
+const previewResponse = await fetch(`${origin}/v1/preflight`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    action: {
+      ...safeTrace.action,
+      nonce: currentNonce.nonce,
+      issuedAt: now,
+      expiresAt: now + 600,
+    },
+  }),
+  signal: AbortSignal.timeout(20_000),
+});
+invariant(previewResponse.ok, `public preflight returned ${previewResponse.status}`);
+const preview = (await previewResponse.json()) as {
+  previewOnly: boolean;
+  mode: string;
+  disposition: string;
+  notice: string;
+};
+invariant(preview.previewOnly && preview.mode === "live", "preflight provenance is incorrect");
+invariant(preview.disposition === "pass", `safe preflight returned ${preview.disposition}`);
+invariant(
+  preview.notice.includes("no 0G Compute inference"),
+  "preflight does not disclose its no-spend boundary",
+);
+
 const rejected = await fetch(`${origin}/v1/jobs`, {
   method: "POST",
   headers: { "Content-Type": "application/json" },
@@ -158,6 +219,7 @@ console.log(
       integrations: ["chain", "compute", "storage", `erc-8004:${agenticEvidence.agentId}`],
       verifiedEvidence: expected.map(([traceId, verdict]) => ({ traceId, verdict })),
       publicWriteProbe: "LIVE_WRITES_DISABLED",
+      instantPreflight: preview.disposition,
       traceCountUnchanged: after.traces.length,
     },
     null,

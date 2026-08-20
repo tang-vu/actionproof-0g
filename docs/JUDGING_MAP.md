@@ -17,6 +17,7 @@ undeployed and unauthorized.
 | Real Galileo safe/block/tamper proof          | `docs/evidence/galileo-live.json`, ChainScan and StorageScan links     | Production adapters completed the full story; identifiers are independently openable |
 | Public evidence deployment                    | `https://actionproof.tangvu.dev`, `ecosystem.config.cjs`               | HTTPS judge access, live probes, real traces, and an explicit anonymous-write gate   |
 | Automated public proof                        | `pnpm smoke:public`, `scripts/public-smoke.ts`                         | No-spend check of HTTPS, integrations, traces, rendering, and write rejection        |
+| Developer-ready transaction preflight         | `POST /v1/preflight`, `/developers`, `docs/INTEGRATION.md`             | Arbitrary exact actions receive read-only simulation and machine-readable policy     |
 
 Fast review:
 
@@ -91,6 +92,7 @@ Then open `http://127.0.0.1:3000`, or inspect the read-only live evidence deploy
 | Security transparency    | `docs/THREAT_MODEL.md`, `SECURITY.md`, visible UI disclaimers, explicit limitations             |
 | Operational safety       | server-only secrets, mainnet double gate, dry-run deploy, recovery playbook                     |
 | Funded API abuse control | disabled public writes plus constant-time operator bearer authorization when writes are enabled |
+| No-spend public utility  | dedicated preflight route, explicit capability contract, and live smoke assertion               |
 | Quality gates            | formatting, lint, TypeScript, unit/fuzz, build, browser journey, secret scan, dependency audit  |
 
 Architecture details and diagrams are in `docs/ARCHITECTURE.md` and the `/architecture` product page.
@@ -109,6 +111,7 @@ Architecture details and diagrams are in `docs/ARCHITECTURE.md` and the `/archit
 | Real integration status vs unavailable/sandbox      | Landing/analyze runtime status panel                                |
 | Public independent evidence                         | `/trace/:id` with hashes, receipts, checks, report, and tamper test |
 | Public HTTPS judge build                            | `https://actionproof.tangvu.dev`                                    |
+| Developer integration contract                      | `/developers`, `docs/INTEGRATION.md`, and typed preflight response  |
 
 No users, partners, audits, or success metrics are invented. The repository and Galileo evidence are
 populated and the live-demo URL is deployed; only the demo-video URL awaits external publication.

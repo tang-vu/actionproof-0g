@@ -28,6 +28,11 @@ test("read-only hosted mode guides judges through preserved live evidence", asyn
       body: JSON.stringify({
         mode: "live",
         writesEnabled: false,
+        capabilities: {
+          instantPreflight: true,
+          fullAttestation: false,
+          publicVerification: true,
+        },
         operatorAuthorization: { required: false, configured: false },
         network: { name: "0G Galileo Testnet", chainId: 16602 },
         services: [],
@@ -36,14 +41,46 @@ test("read-only hosted mode guides judges through preserved live evidence", asyn
   });
   await page.goto("/analyze");
 
-  const safeProof = page.getByRole("link", { name: /Inspect safe Galileo proof/ });
+  const safeProof = page.getByRole("link", { name: /Inspect preserved allow proof/ });
   await expect(safeProof).toBeVisible();
   await expect(safeProof).toHaveAttribute("href", "/trace/fdad8624-8cce-4b8a-8576-c724463469c7");
+  await page.getByRole("button", { name: /Run instant preflight/ }).click();
+  await expect(page.getByText("Policy pass", { exact: true })).toBeVisible();
+  await expect(page.getByText(/no 0G Compute inference/)).toBeVisible();
 
   await page.getByRole("tab", { name: /Unlimited approval/ }).click();
-  const blockedProof = page.getByRole("link", { name: /Inspect blocked Galileo proof/ });
+  const blockedProof = page.getByRole("link", { name: /Inspect preserved block proof/ });
   await expect(blockedProof).toHaveAttribute("href", "/trace/e68696d3-e399-49f9-ab70-3188fac06ab1");
   await expect(page.getByText("Public evidence mode")).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+});
+
+test("custom transaction lab explains unknown calldata without creating evidence", async ({
+  page,
+}) => {
+  await page.goto("/analyze");
+  await page.getByRole("tab", { name: /Custom transaction/ }).click();
+  await page.getByLabel("Exact calldata").fill("0x12345678");
+  await page.getByRole("button", { name: /Preview only/ }).click();
+
+  await expect(page.getByText("Review required", { exact: true })).toBeVisible();
+  await expect(page.getByText("Unknown function selector", { exact: true })).toBeVisible();
+  await expect(page.getByText(/no 0G Compute inference/)).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+});
+
+test("developer surface exposes the no-spend integration contract", async ({ page }) => {
+  await page.goto("/developers");
+
+  await expect(
+    page.getByRole("heading", {
+      name: /Put a policy boundary in front of every agent transaction/,
+    }),
+  ).toBeVisible();
+  await expect(page.getByText("POST /v1/preflight", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Chain writes")).toBeVisible();
+  await expect(page.getByText("Never", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText(/A preview is not an attestation/)).toBeVisible();
   await expectNoHorizontalOverflow(page);
 });
 

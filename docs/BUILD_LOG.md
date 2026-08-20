@@ -129,25 +129,40 @@ authoritative timestamped change log; no history or timestamps are fabricated.
 - Added and exercised a read-only captioned demo recorder. The local reference output is a 77.4-second
   1280×720 H.264 MP4; generated media remains ignored until the owner approves publication.
 
+## 2026-08-20 — Product-grade Instant Preflight
+
+- Added a public, rate-limited `POST /v1/preflight` capability that accepts an arbitrary exact action,
+  computes its hash, simulates from the guard, resolves the current nonce and optional identity, and
+  runs deterministic policy without Compute, Storage, signing, persistence, or chain writes.
+- Extracted reusable selector inspection with structured arguments and risk signals for token/NFT
+  approvals, transfers, ownership changes, proxy upgrades, delegate calls, malformed calldata, and
+  unknown selectors. Unknown meaning now creates a review floor instead of a false-safe result.
+- Turned the analyzer into a transaction lab with custom envelope input, explicit pass/review/block
+  output, decoded call details, simulation provenance, findings, and a visible boundary between
+  instant preview and full 0G evidence.
+- Added a developer integration page and guide, capability discovery, live no-spend smoke coverage,
+  API unit coverage, and desktop/mobile browser journeys for arbitrary custom calldata.
+
 ## Validation record
 
-The latest `pnpm verify` completed successfully on 2026-08-17 in 118.8 seconds against the exact
-identity-bound evidence tree. Mainnet deployment remains deliberately blocked by funding, review,
-audit, and explicit authorization requirements.
+The latest `pnpm verify` completed successfully on 2026-08-20 against the exact product-grade
+preflight and identity-bound evidence tree. Mainnet deployment remains deliberately blocked by
+funding, review, audit, and explicit authorization requirements.
 
 | Check                     | Result                                                                       |
 | ------------------------- | ---------------------------------------------------------------------------- |
 | Formatting                | Prettier + `forge fmt --check` passed                                        |
 | ESLint                    | Passed with zero warnings                                                    |
 | TypeScript                | Strict checks passed for Core, 0G adapters, API, and Web                     |
-| Core tests                | 10 passed                                                                    |
-| Adapter/API tests         | 17 adapter + 10 API tests passed                                             |
+| Core tests                | 14 passed                                                                    |
+| Adapter/API tests         | 17 adapter + 11 API tests passed                                             |
 | Foundry unit/fuzz tests   | 31 passed; four fuzz properties ran 512 cases each                           |
 | Production builds         | Contracts, Core, 0G adapters, API, and Next.js passed; guard runtime 6,127 B |
-| Playwright desktop/mobile | 8 passed across Chromium desktop and Pixel 7                                 |
+| Playwright desktop/mobile | 12 passed across Chromium desktop and Pixel 7                                |
 | Secret scan               | 116 repository files checked; passed                                         |
 | Production audit          | No known vulnerabilities found                                               |
 | Sandbox smoke             | Safe executed; unlimited approval blocked; tamper verification rejected      |
 | Deployment evidence       | Galileo deployed/source-verified; Mainnet dry-run passed, broadcast disabled |
 | Public 0G probes          | Chain, Compute, Storage, and ERC-8004 agent `278` passed                     |
 | Live paid 0G proof        | Identity-bound safe executed; unlimited approval blocked; tamper rejected    |
+| Public preflight          | Live no-spend arbitrary-action preview passed without creating a trace       |
