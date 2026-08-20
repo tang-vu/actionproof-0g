@@ -15,7 +15,7 @@
 
 **Live demo:** `https://actionproof.tangvu.dev`
 
-**Demo video:** `[DEMO_VIDEO_URL]`
+**Demo video:** `https://youtu.be/nnSikbUxL4A`
 
 **0G Chain deployment:** `0xAE7bB700296d25FC4fB2EC3dBCCda8348f3b7d5e` —
 `https://chainscan-galileo.0g.ai/address/0xae7bb700296d25fc4fb2ec3dbccda8348f3b7d5e`
@@ -133,7 +133,7 @@ Open `http://127.0.0.1:3000`. The default is a clearly labeled sandbox. Follow
 >
 > Built for 0G Bridge by AKINDO — Wave 3. Experimental, open source, and using valueless demo assets.
 >
-> https://github.com/tang-vu/actionproof-0g [DEMO_URL]
+> https://github.com/tang-vu/actionproof-0g https://youtu.be/nnSikbUxL4A
 >
 > @0G_labs @0G_Builders @AKINDO_io #0GBridge #BuildOn0G
 
@@ -171,7 +171,7 @@ Publishing this post is an external action and requires owner approval.
 - [x] Live demo URL works in a fresh browser over HTTPS.
 - [x] Public no-spend preflight accepts arbitrary exact actions and is covered by live smoke tests.
 - [x] A captioned demo video can be reproduced locally with `pnpm demo:record`.
-- [ ] Demo video URL is owner-approved and published.
+- [x] Demo video URL is owner-approved and published.
 - [x] Repository secret scan finds no private key or API key; no fabricated metrics/claims exist.
 - [x] Security disclaimer and known limitations remain visible.
 - [x] Project fields meet the documented platform length requirements.
