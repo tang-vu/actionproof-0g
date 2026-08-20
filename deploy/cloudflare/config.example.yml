@@ -3,7 +3,7 @@ credentials-file: <ABSOLUTE_PATH_TO_TUNNEL_CREDENTIALS_JSON>
 
 ingress:
   - hostname: actionproof.example.com
-    path: ^/(v1(/.*)?|healthz|readyz)$
+    path: ^/(v1(/.*)?|healthz|readyz|metrics)$
     service: http://127.0.0.1:8787
     originRequest:
       connectTimeout: 10s
